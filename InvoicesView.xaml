@@ -35,18 +35,26 @@
             <RowDefinition Height="Auto"/>
         </Grid.RowDefinitions>
 
-        <!-- الصف الأول: الأرصدة والسنة المالية -->
+        <!-- السنة المالية ورصيد الصندوق -->
         <StackPanel Grid.Row="0" Orientation="Horizontal" HorizontalAlignment="Center" Margin="0,0,0,20">
             <TextBlock Text="السنة المالية:" VerticalAlignment="Center" FontWeight="Bold" FontSize="18" Margin="0 0 5 0"/>
-            <ComboBox x:Name="YearComboBox" Width="87" Height="28" FontSize="16" SelectionChanged="YearComboBox_SelectionChanged" Margin="0,0,30,0" HorizontalAlignment="Center" VerticalAlignment="Center"/>
-            <TextBlock Text="رصيد الفواتير:" VerticalAlignment="Center" FontWeight="Bold" FontSize="16" Margin="0,0,5,0"/>
-            <TextBlock x:Name="InvoicesBalanceText" Text="0.000" FontSize="20" FontWeight="Bold" Foreground="White" Background="#2F855A" Padding="15,7" TextAlignment="Center" Margin="0,0,20,0"/>
+            <ComboBox x:Name="YearComboBox" Width="87" Height="28" FontSize="16"
+                      SelectionChanged="YearComboBox_SelectionChanged" Margin="0,0,30,0"
+                      HorizontalAlignment="Center" VerticalAlignment="Center"/>
+
+            <TextBlock Text="رصيد الصندوق:" VerticalAlignment="Center" FontWeight="Bold" FontSize="16" Margin="0,0,5,0"/>
+            <TextBlock x:Name="InvoicesBalanceText" Text="0.000" FontSize="20" FontWeight="Bold"
+                       Foreground="White" Background="#2F855A" Padding="15,7"
+                       TextAlignment="Center" Margin="0,0,20,0"/>
+
             <TextBlock Text="الرصيد الافتتاحي:" VerticalAlignment="Center" FontWeight="Bold" FontSize="16" Margin="0,0,5,0"/>
-            <TextBox x:Name="OpeningBalanceTextBox" Width="90" FontSize="16" Text="0" KeyDown="OpeningBalanceTextBox_KeyDown" TextAlignment="Center"/>
+            <TextBox x:Name="OpeningBalanceTextBox" Width="90" FontSize="16" Text="0"
+                     KeyDown="OpeningBalanceTextBox_KeyDown" TextAlignment="Center"
+                     ToolTip="رصيد الصندوق في بداية السنة المالية المختارة"/>
             <Button Content="تحديث" Width="80" Height="30" FontSize="14" Click="UpdateOpeningBalance_Click"/>
         </StackPanel>
 
-        <!-- الصف الثاني: البحث -->
+        <!-- البحث -->
         <StackPanel Grid.Row="1" Orientation="Horizontal" HorizontalAlignment="Center" Margin="0 0 0 20">
             <TextBlock Text="بحث بالبيان:" VerticalAlignment="Center" FontWeight="Bold" Margin="0 0 5 0"/>
             <TextBox x:Name="SearchTextBox" Width="200" TextAlignment="Center" KeyDown="MoveFocusOnEnter"/>
@@ -59,22 +67,32 @@
             <Button Content="طباعة" Width="80" Height="30" Click="Print_Click" FontSize="14" Background="#2F855A" Margin="20,5,5,5"/>
         </StackPanel>
 
+        <!-- إضافة حركة صندوق -->
         <StackPanel Grid.Row="2" Orientation="Horizontal" HorizontalAlignment="Center" Margin="0 0 0 20">
-
             <TextBlock Text="التاريخ:" VerticalAlignment="Center" FontWeight="Bold" Margin="0 0 5 0"/>
             <TextBox x:Name="InvoiceDateTextBox" Width="91" KeyDown="InvoiceDate_KeyDown" TextAlignment="Center"/>
 
-            <TextBlock Text="رقم الفاتورة:" VerticalAlignment="Center" FontWeight="Bold" Margin="0 0 5 0"/>
-            <TextBox x:Name="InvoiceNoTextBox" Width="86" KeyDown="MoveFocusOnEnter" HorizontalAlignment="Center" VerticalAlignment="Center" TextAlignment="Center"/>
+            <TextBlock Text="رقم المرجع:" VerticalAlignment="Center" FontWeight="Bold" Margin="0 0 5 0"/>
+            <TextBox x:Name="InvoiceNoTextBox" Width="95" KeyDown="MoveFocusOnEnter"
+                     HorizontalAlignment="Center" VerticalAlignment="Center" TextAlignment="Center"
+                     ToolTip="رقم الفاتورة أو الشيك أو أي رقم مرجعي للحركة"/>
 
             <TextBlock Text="البيان:" VerticalAlignment="Center" FontWeight="Bold" Margin="0 0 5 0"/>
-            <TextBox x:Name="DescriptionTextBox" Width="237" KeyDown="MoveFocusOnEnter" TextAlignment="Center"/>
-            <TextBlock Text="مدين:" VerticalAlignment="Center" FontWeight="Bold" Margin="0 0 5 0"/>
-            <TextBox x:Name="DebitTextBox" Width="68" KeyDown="MoveFocusOnEnter" TextAlignment="Center"/>
-            <TextBlock Text="دائن:" VerticalAlignment="Center" FontWeight="Bold" Margin="0 0 5 0"/>
-            <TextBox x:Name="CreditTextBox" Width="68" KeyDown="CreditTextBox_KeyDown" HorizontalAlignment="Center" VerticalAlignment="Center" TextAlignment="Center"/>
-            <Button x:Name="AddUpdateButton" Content="إضافة الفاتورة" Width="104" Height="30" Click="AddUpdateInvoice_Click" FontSize="14"/>
-            <Button x:Name="CancelEditButton" Content="إلغاء التعديل" Width="120" Height="30" Click="CancelEdit_Click" Visibility="Collapsed" Background="#A0AEC0"/>
+            <TextBox x:Name="DescriptionTextBox" Width="220" KeyDown="MoveFocusOnEnter" TextAlignment="Center"/>
+
+            <TextBlock Text="تغذية الصندوق:" VerticalAlignment="Center" FontWeight="Bold" Margin="0 0 5 0"/>
+            <TextBox x:Name="DebitTextBox" Width="80" KeyDown="MoveFocusOnEnter" TextAlignment="Center"
+                     ToolTip="المبلغ الذي تمت إضافته للصندوق مثل تحصيل شيك النثرية أو التحويل"/>
+
+            <TextBlock Text="صرف فاتورة:" VerticalAlignment="Center" FontWeight="Bold" Margin="0 0 5 0"/>
+            <TextBox x:Name="CreditTextBox" Width="80" KeyDown="CreditTextBox_KeyDown"
+                     HorizontalAlignment="Center" VerticalAlignment="Center" TextAlignment="Center"
+                     ToolTip="المبلغ الذي تم صرفه من الصندوق بموجب فاتورة"/>
+
+            <Button x:Name="AddUpdateButton" Content="إضافة حركة" Width="105" Height="30"
+                    Click="AddUpdateInvoice_Click" FontSize="14"/>
+            <Button x:Name="CancelEditButton" Content="إلغاء التعديل" Width="120" Height="30"
+                    Click="CancelEdit_Click" Visibility="Collapsed" Background="#A0AEC0"/>
         </StackPanel>
 
         <DataGrid x:Name="InvoicesDataGrid" Grid.Row="3" AutoGenerateColumns="False" CanUserAddRows="False"
@@ -83,21 +101,18 @@
                   HorizontalAlignment="Stretch" VerticalAlignment="Stretch">
             <DataGrid.Columns>
                 <DataGridTextColumn Header="م" Binding="{Binding Id}" Width="60" ElementStyle="{StaticResource CenteredCellStyle}"/>
-
-                <DataGridTextColumn Header="التاريخ" Binding="{Binding Date, StringFormat={x:Static local:AppSettings.DateFormat}}" Width="1.5*" ElementStyle="{StaticResource CenteredCellStyle}"/>
-
-                <DataGridTextColumn Header="رقم الفاتورة" Binding="{Binding InvoiceNo}" Width="*" ElementStyle="{StaticResource CenteredCellStyle}"/>
-
+                <DataGridTextColumn Header="التاريخ" Binding="{Binding Date, StringFormat={x:Static local:AppSettings.DateFormat}}" Width="1.4*" ElementStyle="{StaticResource CenteredCellStyle}"/>
+                <DataGridTextColumn Header="المرجع" Binding="{Binding InvoiceNo}" Width="1.1*" ElementStyle="{StaticResource CenteredCellStyle}"/>
                 <DataGridTextColumn Header="البيان" Binding="{Binding Description}" Width="3*" ElementStyle="{StaticResource CenteredCellStyle}"/>
-                <DataGridTextColumn Header="مدين" Binding="{Binding Debit, Converter={StaticResource ZeroToEmptyStringConverter}}" Width="*" ElementStyle="{StaticResource CenteredCellStyle}"/>
-                <DataGridTextColumn Header="دائن" Binding="{Binding Credit, Converter={StaticResource ZeroToEmptyStringConverter}}" Width="*" ElementStyle="{StaticResource CenteredCellStyle}"/>
-                <DataGridTextColumn Header="الرصيد" Binding="{Binding Balance, StringFormat=N3}" Width="1.5*" ElementStyle="{StaticResource CenteredCellStyle}"/>
+                <DataGridTextColumn Header="تغذية الصندوق" Binding="{Binding Debit, Converter={StaticResource ZeroToEmptyStringConverter}}" Width="1.3*" ElementStyle="{StaticResource CenteredCellStyle}"/>
+                <DataGridTextColumn Header="صرف فاتورة" Binding="{Binding Credit, Converter={StaticResource ZeroToEmptyStringConverter}}" Width="1.3*" ElementStyle="{StaticResource CenteredCellStyle}"/>
+                <DataGridTextColumn Header="الرصيد" Binding="{Binding Balance, StringFormat=N3}" Width="1.4*" ElementStyle="{StaticResource CenteredCellStyle}"/>
             </DataGrid.Columns>
         </DataGrid>
 
         <StackPanel Grid.Row="4" Orientation="Horizontal" HorizontalAlignment="Center" Margin="0 10 0 0">
-            <Button Content="تعديل الفاتورة" Width="94" Height="35" Background="#DD6B20" Click="EditInvoice_Click" FontSize="14"/>
-            <Button Content="حذف الفاتورة" Width="91" Height="35" Background="#E53E3E" Click="DeleteInvoice_Click" FontSize="14"/>
+            <Button Content="تعديل الحركة" Width="105" Height="35" Background="#DD6B20" Click="EditInvoice_Click" FontSize="14"/>
+            <Button Content="حذف الحركة" Width="100" Height="35" Background="#E53E3E" Click="DeleteInvoice_Click" FontSize="14"/>
         </StackPanel>
     </Grid>
 </UserControl>
