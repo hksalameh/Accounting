@@ -4,7 +4,14 @@ param(
 )
 
 $ErrorActionPreference = "Stop"
+
 $solutionPath = Join-Path $PSScriptRoot "AccountingApp.sln"
+$packagesPath = Join-Path $PSScriptRoot "packages"
+
+if (-not (Test-Path $solutionPath)) {
+    throw "Solution file was not found: $solutionPath"
+}
+
 $msbuild = Get-Command msbuild -ErrorAction SilentlyContinue | Select-Object -ExpandProperty Source -First 1
 
 if (-not $msbuild) {
@@ -21,7 +28,22 @@ if (-not $msbuild) {
 }
 
 if (-not $msbuild) {
-    Write-Error "MSBuild was not found. Install Visual Studio or Build Tools with the .NET desktop development workload, then run this script again."
+    throw "MSBuild was not found. Install Visual Studio 2019/2022 or Build Tools with the .NET desktop development workload."
 }
 
-& $msbuild $solutionPath /restore /t:Build /p:Configuration=$Configuration /v:minimal
+Write-Host "Using MSBuild: $msbuild"
+Write-Host "Restoring NuGet packages to: $packagesPath"
+
+& $msbuild $solutionPath /t:Restore /p:RestorePackagesConfig=true /p:RestoreRepositoryPath="$packagesPath" /v:minimal
+if ($LASTEXITCODE -ne 0) {
+    throw "NuGet package restore failed with exit code $LASTEXITCODE."
+}
+
+Write-Host "Building AccountingApp ($Configuration)..."
+
+& $msbuild $solutionPath /t:Build /p:Configuration=$Configuration /p:RestoreRepositoryPath="$packagesPath" /m /v:minimal
+if ($LASTEXITCODE -ne 0) {
+    throw "Build failed with exit code $LASTEXITCODE."
+}
+
+Write-Host "Build completed successfully."
