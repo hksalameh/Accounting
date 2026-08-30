@@ -1,0 +1,29 @@
+name: Build AccountingApp
+
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup MSBuild
+        uses: microsoft/setup-msbuild@v2
+
+      - name: Build Release
+        shell: powershell
+        run: .\Build.ps1 -Configuration Release
+
+      - name: Upload build output
+        if: success()
+        uses: actions/upload-artifact@v4
+        with:
+          name: AccountingApp-Release
+          path: bin\Release\
+          if-no-files-found: error
