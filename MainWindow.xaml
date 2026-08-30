@@ -1,0 +1,33 @@
+﻿<Window x:Class="AccountingApp.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="برنامج المحاسبة" Height="800" Width="1200"
+        WindowStartupLocation="CenterScreen"
+        FlowDirection="RightToLeft"
+        WindowState="Maximized">
+
+    <Grid x:Name="MainGrid" Background="#F7FAFC">
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="220"/>
+            <ColumnDefinition Width="*"/>
+        </Grid.ColumnDefinitions>
+
+        <Border Grid.Column="0" Background="#2D3748" Padding="16">
+            <StackPanel>
+                <Image Source="/الشعار الجديد.png"
+                       Width="130"
+                       Margin="0,0,0,24"/>
+                <TextBlock Text="برنامج المحاسبة" Foreground="White" FontSize="20" FontWeight="SemiBold" Margin="0 0 0 20" TextAlignment="Center"/>
+                <Button Content="الرئيسية" Margin="0 5" Height="40" Click="Home_Click"/>
+                <Button Content="الفواتير" Margin="0 5" Height="40" Click="Invoices_Click"/>
+                <Button Content="الإيرادات" Margin="0 5" Height="40" Click="Revenues_Click"/>
+                <Button Content="المساعدات" Margin="0 5" Height="40" Click="Aids_Click"/>
+                <Button Content="الوقود" Margin="0 5" Height="40" Click="Fuel_Click"/>
+                <Separator Margin="0 10"/>
+                <Button Content="خروج" Margin="0 5" Height="40" Background="DarkRed" Foreground="White" Click="Exit_Click"/>
+            </StackPanel>
+        </Border>
+
+        <Border x:Name="ContentArea" Grid.Column="1" Background="#F7FAFC" />
+    </Grid>
+</Window>

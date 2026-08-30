@@ -1,0 +1,70 @@
+<UserControl x:Class="AccountingApp.HomeView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             FlowDirection="RightToLeft"
+             Background="#EDF2F7"
+             Loaded="HomeView_Loaded">
+    <UserControl.Resources>
+        <Style TargetType="Border" x:Key="CardStyle">
+            <Setter Property="Background" Value="White"/>
+            <Setter Property="CornerRadius" Value="8"/>
+            <Setter Property="Padding" Value="20"/>
+            <Setter Property="Margin" Value="10"/>
+            <Setter Property="Effect">
+                <Setter.Value>
+                    <DropShadowEffect ShadowDepth="1" Color="#000000" Opacity="0.05" BlurRadius="10"/>
+                </Setter.Value>
+            </Setter>
+        </Style>
+        <Style TargetType="TextBlock" x:Key="TitleStyle">
+            <Setter Property="FontSize" Value="22"/>
+            <Setter Property="FontWeight" Value="SemiBold"/>
+            <Setter Property="Foreground" Value="#4A5568"/>
+        </Style>
+        <Style TargetType="TextBlock" x:Key="AmountStyle">
+            <Setter Property="FontSize" Value="36"/>
+            <Setter Property="FontWeight" Value="Bold"/>
+            <Setter Property="HorizontalAlignment" Value="Center"/>
+        </Style>
+    </UserControl.Resources>
+
+    <Grid>
+        <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center">
+
+            <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Margin="0,0,0,30">
+                <TextBlock Text="الملخص المالي للسنة:" FontSize="28" FontWeight="Bold" Foreground="#2D3748" VerticalAlignment="Center"/>
+                <ComboBox x:Name="YearComboBox" Width="100" Height="32" FontSize="16" VerticalAlignment="Center" Margin="20,0,0,0" SelectionChanged="YearComboBox_SelectionChanged"/>
+            </StackPanel>
+
+            <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
+
+                <!-- بطاقة رصيد الإيرادات -->
+                <Border Style="{StaticResource CardStyle}" MinWidth="250">
+                    <StackPanel>
+                        <TextBlock x:Name="RevenuesBalanceCardTitle" Text="رصيد الإيرادات" Style="{StaticResource TitleStyle}" HorizontalAlignment="Center"/>
+                        <Separator Margin="0,10"/>
+                        <TextBlock x:Name="TotalRevenuesText" Text="0.000" Style="{StaticResource AmountStyle}" Foreground="#2F855A"/>
+                    </StackPanel>
+                </Border>
+
+                <!-- بطاقة رصيد الفواتير -->
+                <Border Style="{StaticResource CardStyle}" MinWidth="250">
+                    <StackPanel>
+                        <TextBlock x:Name="InvoicesBalanceCardTitle" Text="رصيد الفواتير" Style="{StaticResource TitleStyle}" HorizontalAlignment="Center"/>
+                        <Separator Margin="0,10"/>
+                        <TextBlock x:Name="TotalExpensesText" Text="0.000" Style="{StaticResource AmountStyle}" Foreground="#4A5568"/>
+                    </StackPanel>
+                </Border>
+
+                <!-- بطاقة رصيد الصندوق -->
+                <Border Style="{StaticResource CardStyle}" MinWidth="300" Background="#3182CE">
+                    <StackPanel>
+                        <TextBlock Text="رصيد الصندوق" Style="{StaticResource TitleStyle}" HorizontalAlignment="Center" Foreground="White"/>
+                        <Separator Margin="0,10" Background="#A3BFDB"/>
+                        <TextBlock x:Name="FundBalanceText" Text="0.000" Style="{StaticResource AmountStyle}" Foreground="White"/>
+                    </StackPanel>
+                </Border>
+            </StackPanel>
+        </StackPanel>
+    </Grid>
+</UserControl>
