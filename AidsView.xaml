@@ -94,7 +94,6 @@
             <RowDefinition Height="*"/>
         </Grid.RowDefinitions>
 
-        <!-- رأس الصفحة -->
         <Border Grid.Row="0" Style="{StaticResource CardStyle}" Padding="18,13">
             <DockPanel LastChildFill="True">
                 <StackPanel DockPanel.Dock="Right">
@@ -113,7 +112,6 @@
             </DockPanel>
         </Border>
 
-        <!-- مساحة العمل: اليسار للبحث والنتائج، اليمين للإدخال -->
         <Grid Grid.Row="2" FlowDirection="LeftToRight">
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="*" MinWidth="580"/>
@@ -121,7 +119,6 @@
                 <ColumnDefinition Width="390"/>
             </Grid.ColumnDefinitions>
 
-            <!-- البحث والنتائج -->
             <Grid Grid.Column="0" FlowDirection="RightToLeft">
                 <Grid.RowDefinitions>
                     <RowDefinition Height="Auto"/>
@@ -131,7 +128,7 @@
 
                 <Border Grid.Row="0" Style="{StaticResource CardStyle}">
                     <StackPanel>
-                        <DockPanel Margin="0,0,0,10">
+                        <DockPanel Margin="0,0,0,10" LastChildFill="False">
                             <StackPanel DockPanel.Dock="Right">
                                 <TextBlock Text="بحث وعرض السجلات" FontSize="18" FontWeight="Bold" Foreground="{StaticResource TextBrush}"/>
                                 <TextBlock Text="حدد النوع والفترة أو اكتب أي كلمة للبحث" Foreground="{StaticResource MutedTextBrush}" Margin="0,2,0,0"/>
@@ -139,6 +136,8 @@
                             <Button Content="طباعة النتائج"
                                     Style="{StaticResource SuccessButtonStyle}"
                                     DockPanel.Dock="Left"
+                                    Width="125"
+                                    Height="36"
                                     Margin="4,0,0,0"
                                     Click="Print_Click"/>
                         </DockPanel>
@@ -274,7 +273,6 @@
                 </Border>
             </Grid>
 
-            <!-- نموذج الإدخال الثابت -->
             <Border Grid.Column="2" Style="{StaticResource CardStyle}" FlowDirection="RightToLeft" Padding="18">
                 <Grid>
                     <Grid.RowDefinitions>
