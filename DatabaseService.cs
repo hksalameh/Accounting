@@ -68,7 +68,7 @@ namespace AccountingApp
         }
 
         /// <summary>
-        /// ينشئ نسخة احتياطية مستقلة من ملف قاعدة البيانات الحالي.
+        /// ينشئ نسخة احتياطية متسقة باستخدام آلية SQLite الرسمية للنسخ أثناء التشغيل.
         /// يعيد مسار النسخة أو null إذا لم توجد قاعدة بيانات بعد.
         /// </summary>
         public static string CreateBackup(string reason = "manual")
@@ -80,7 +80,14 @@ namespace AccountingApp
             string fileName = $"invoices-{DateTime.Now:yyyyMMdd-HHmmss}-{safeReason}.db";
             string destination = Path.Combine(BackupDirectory, fileName);
 
-            File.Copy(DatabasePath, destination, false);
+            using (var sourceConnection = GetConnection())
+            using (var destinationConnection = new SqliteConnection(
+                new SqliteConnectionStringBuilder { DataSource = destination }.ToString()))
+            {
+                sourceConnection.Open();
+                sourceConnection.BackupDatabase(destinationConnection);
+            }
+
             CleanupOldBackups(30);
             return destination;
         }
