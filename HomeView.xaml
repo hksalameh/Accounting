@@ -3,6 +3,8 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              FlowDirection="RightToLeft"
              Background="#F1F5F9"
+             TextOptions.TextFormattingMode="Display"
+             TextOptions.TextRenderingMode="ClearType"
              Loaded="HomeView_Loaded">
     <UserControl.Resources>
         <SolidColorBrush x:Key="TextBrush" Color="#0F172A"/>
@@ -18,11 +20,6 @@
             <Setter Property="BorderThickness" Value="1"/>
             <Setter Property="Padding" Value="18"/>
             <Setter Property="Margin" Value="6"/>
-            <Setter Property="Effect">
-                <Setter.Value>
-                    <DropShadowEffect ShadowDepth="1" Opacity="0.05" BlurRadius="12"/>
-                </Setter.Value>
-            </Setter>
         </Style>
 
         <Style x:Key="MainTitleStyle" TargetType="TextBlock">
@@ -60,7 +57,6 @@
 
     <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
         <StackPanel Margin="16">
-            <!-- رأس الصفحة -->
             <Border Style="{StaticResource CardStyle}" Margin="0,0,0,8" Padding="20,14">
                 <DockPanel LastChildFill="True">
                     <StackPanel DockPanel.Dock="Right">
@@ -86,7 +82,6 @@
                        TextAlignment="Center"
                        HorizontalAlignment="Stretch"/>
 
-            <!-- الأرصدة الأساسية -->
             <Grid Margin="-6,0,-6,8">
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="*"/>
@@ -123,7 +118,6 @@
                 </Border>
             </Grid>
 
-            <!-- التفاصيل -->
             <DockPanel Margin="6,5,6,6">
                 <TextBlock Text="تفاصيل حركة السنة" FontSize="18" FontWeight="Bold" Foreground="{StaticResource TextBrush}" DockPanel.Dock="Right"/>
                 <TextBlock Text="القيم أدناه تخص السنة المالية المختارة فقط" Foreground="{StaticResource MutedBrush}" VerticalAlignment="Center" DockPanel.Dock="Left"/>
