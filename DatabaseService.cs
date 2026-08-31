@@ -85,6 +85,111 @@ namespace AccountingApp
             return destination;
         }
 
+        /// <summary>
+        /// ينشئ نسخة واحدة فقط في اليوم عند تشغيل البرنامج.
+        /// </summary>
+        public static string CreateDailyBackup()
+        {
+            if (!File.Exists(DatabasePath)) return null;
+
+            Directory.CreateDirectory(BackupDirectory);
+            string pattern = $"invoices-{DateTime.Now:yyyyMMdd}-*-daily.db";
+            string existing = Directory.GetFiles(BackupDirectory, pattern)
+                .OrderByDescending(File.GetLastWriteTimeUtc)
+                .FirstOrDefault();
+
+            return existing ?? CreateBackup("daily");
+        }
+
+        /// <summary>
+        /// يتحقق من أن الملف نسخة قاعدة بيانات خاصة بالبرنامج قبل السماح باستعادته.
+        /// يدعم النسخ القديمة التي لا تحتوي بعد على VoucherNo.
+        /// </summary>
+        public static bool IsValidAccountingDatabase(string filePath)
+        {
+            if (string.IsNullOrWhiteSpace(filePath) || !File.Exists(filePath)) return false;
+
+            try
+            {
+                var connectionString = new SqliteConnectionStringBuilder
+                {
+                    DataSource = filePath,
+                    Mode = SqliteOpenMode.ReadOnly
+                }.ToString();
+
+                using (var conn = new SqliteConnection(connectionString))
+                {
+                    conn.Open();
+                    string[] requiredTables =
+                    {
+                        "Invoices", "OpeningBalances", "ReceiptVouchers", "Deposits", "Aids"
+                    };
+
+                    foreach (string table in requiredTables)
+                    {
+                        using (var cmd = new SqliteCommand(
+                            "SELECT COUNT(*) FROM sqlite_master WHERE type='table' AND name=@Name", conn))
+                        {
+                            cmd.Parameters.AddWithValue("@Name", table);
+                            if (Convert.ToInt32(cmd.ExecuteScalar()) == 0) return false;
+                        }
+                    }
+                }
+
+                return true;
+            }
+            catch
+            {
+                return false;
+            }
+        }
+
+        /// <summary>
+        /// يستعيد نسخة قاعدة بيانات بعد التحقق منها، مع حفظ الوضع الحالي أولاً.
+        /// إذا فشلت الترقية بعد الاستعادة يتم إرجاع النسخة السابقة تلقائياً.
+        /// </summary>
+        public static void RestoreBackup(string sourcePath)
+        {
+            if (!IsValidAccountingDatabase(sourcePath))
+            {
+                throw new InvalidOperationException("الملف المحدد ليس نسخة قاعدة بيانات صالحة لهذا البرنامج.");
+            }
+
+            string sourceFullPath = Path.GetFullPath(sourcePath);
+            string targetFullPath = Path.GetFullPath(DatabasePath);
+            if (string.Equals(sourceFullPath, targetFullPath, StringComparison.OrdinalIgnoreCase))
+            {
+                throw new InvalidOperationException("الملف المحدد هو قاعدة البيانات الحالية نفسها.");
+            }
+
+            string rollbackBackup = CreateBackup("pre-restore");
+
+            try
+            {
+                File.Copy(sourceFullPath, targetFullPath, true);
+                _isInitialized = false;
+                InitializeDatabase();
+            }
+            catch
+            {
+                try
+                {
+                    if (!string.IsNullOrWhiteSpace(rollbackBackup) && File.Exists(rollbackBackup))
+                    {
+                        File.Copy(rollbackBackup, targetFullPath, true);
+                        _isInitialized = false;
+                        InitializeDatabase();
+                    }
+                }
+                catch
+                {
+                    _isInitialized = false;
+                }
+
+                throw;
+            }
+        }
+
         private static string SanitizeFilePart(string value)
         {
             if (string.IsNullOrWhiteSpace(value)) return "backup";
@@ -213,9 +318,6 @@ namespace AccountingApp
             }
         }
 
-        /// <summary>
-        /// تهيئة الجداول الأساسية ثم تنفيذ أي ترقية مطلوبة بطريقة غير مدمرة.
-        /// </summary>
         public static void InitializeDatabase()
         {
             if (_isInitialized) return;
@@ -315,7 +417,6 @@ namespace AccountingApp
 
             if (version >= CurrentSchemaVersion && hasVoucherNo) return;
 
-            // النسخة الاحتياطية مطلوبة فقط لملف قديم فعلي يحتاج تعديل في بنيته.
             if (databaseExistedBeforeStartup && !hasVoucherNo)
             {
                 try
@@ -329,6 +430,8 @@ namespace AccountingApp
                         ex);
                 }
             }
+
+            int targetVersion = Math.Max(version, CurrentSchemaVersion);
 
             using (var conn = GetConnection())
             {
@@ -350,7 +453,7 @@ namespace AccountingApp
                         using (var cmd = conn.CreateCommand())
                         {
                             cmd.Transaction = transaction;
-                            cmd.CommandText = $"PRAGMA user_version = {CurrentSchemaVersion};";
+                            cmd.CommandText = $"PRAGMA user_version = {targetVersion};";
                             cmd.ExecuteNonQuery();
                         }
 
