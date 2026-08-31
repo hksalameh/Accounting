@@ -3,193 +3,329 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:local="clr-namespace:AccountingApp"
              FlowDirection="RightToLeft"
-             Background="#EDF2F7"
+             Background="#F1F5F9"
              Loaded="FuelView_Loaded">
     <UserControl.Resources>
-        <SolidColorBrush x:Key="PrimaryBrush" Color="#3182CE"/>
-        <SolidColorBrush x:Key="DangerBrush" Color="#E53E3E"/>
-        <SolidColorBrush x:Key="WarningBrush" Color="#DD6B20"/>
-        <SolidColorBrush x:Key="SecondaryBrush" Color="#A0AEC0"/>
-        <SolidColorBrush x:Key="SuccessBrush" Color="#2F855A"/>
-        <Style TargetType="TextBlock" x:Key="LabelStyle">
-            <Setter Property="VerticalAlignment" Value="Center"/>
-            <Setter Property="FontWeight" Value="SemiBold"/>
-            <Setter Property="Margin" Value="0,0,10,0"/>
-            <Setter Property="Foreground" Value="#4A5568"/>
+        <SolidColorBrush x:Key="PrimaryBrush" Color="#2563EB"/>
+        <SolidColorBrush x:Key="SuccessBrush" Color="#059669"/>
+        <SolidColorBrush x:Key="WarningBrush" Color="#D97706"/>
+        <SolidColorBrush x:Key="DangerBrush" Color="#DC2626"/>
+        <SolidColorBrush x:Key="SecondaryBrush" Color="#64748B"/>
+        <SolidColorBrush x:Key="TextBrush" Color="#0F172A"/>
+        <SolidColorBrush x:Key="MutedBrush" Color="#64748B"/>
+        <SolidColorBrush x:Key="BorderBrush" Color="#E2E8F0"/>
+
+        <Style x:Key="CardStyle" TargetType="Border">
+            <Setter Property="Background" Value="White"/>
+            <Setter Property="CornerRadius" Value="14"/>
+            <Setter Property="BorderBrush" Value="{StaticResource BorderBrush}"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="Padding" Value="16"/>
+            <Setter Property="Effect">
+                <Setter.Value>
+                    <DropShadowEffect ShadowDepth="1" Opacity="0.05" BlurRadius="12"/>
+                </Setter.Value>
+            </Setter>
         </Style>
-        <Style TargetType="Button" BasedOn="{StaticResource AppButtonStyle}">
+
+        <Style x:Key="LabelStyle" TargetType="TextBlock">
+            <Setter Property="FontWeight" Value="SemiBold"/>
+            <Setter Property="Foreground" Value="#475569"/>
+            <Setter Property="Margin" Value="0,0,0,5"/>
+        </Style>
+
+        <Style x:Key="FieldTextBoxStyle" TargetType="TextBox">
+            <Setter Property="Height" Value="38"/>
+            <Setter Property="Padding" Value="9,5"/>
+            <Setter Property="VerticalContentAlignment" Value="Center"/>
+            <Setter Property="BorderBrush" Value="#CBD5E1"/>
+            <Setter Property="Margin" Value="0,0,0,10"/>
+        </Style>
+
+        <Style x:Key="FieldComboBoxStyle" TargetType="ComboBox">
+            <Setter Property="Height" Value="38"/>
+            <Setter Property="Padding" Value="6,3"/>
+            <Setter Property="BorderBrush" Value="#CBD5E1"/>
+            <Setter Property="Margin" Value="0,0,0,10"/>
+        </Style>
+
+        <Style x:Key="PrimaryButtonStyle" TargetType="Button" BasedOn="{StaticResource AppButtonStyle}">
             <Setter Property="Background" Value="{StaticResource PrimaryBrush}"/>
             <Setter Property="Foreground" Value="White"/>
-            <Setter Property="FontWeight" Value="Bold"/>
-            <Setter Property="Margin" Value="5"/>
-            <Setter Property="Padding" Value="20,0"/>
-            <Setter Property="MinHeight" Value="30"/>
-            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="FontWeight" Value="SemiBold"/>
+            <Setter Property="MinHeight" Value="36"/>
+            <Setter Property="Padding" Value="15,5"/>
+            <Setter Property="Margin" Value="3"/>
             <Setter Property="BorderThickness" Value="0"/>
         </Style>
-        <Style x:Key="DeleteButton" TargetType="Button" BasedOn="{StaticResource {x:Type Button}}">
+        <Style x:Key="SuccessButtonStyle" TargetType="Button" BasedOn="{StaticResource PrimaryButtonStyle}">
+            <Setter Property="Background" Value="{StaticResource SuccessBrush}"/>
+        </Style>
+        <Style x:Key="EditButton" TargetType="Button" BasedOn="{StaticResource PrimaryButtonStyle}">
+            <Setter Property="Background" Value="{StaticResource WarningBrush}"/>
+        </Style>
+        <Style x:Key="DeleteButton" TargetType="Button" BasedOn="{StaticResource PrimaryButtonStyle}">
             <Setter Property="Background" Value="{StaticResource DangerBrush}"/>
         </Style>
-        <Style x:Key="EditButton" TargetType="Button" BasedOn="{StaticResource {x:Type Button}}">
-            <Setter Property="Background" Value="{StaticResource WarningBrush}"/>
+        <Style x:Key="SecondaryButton" TargetType="Button" BasedOn="{StaticResource PrimaryButtonStyle}">
+            <Setter Property="Background" Value="{StaticResource SecondaryBrush}"/>
+        </Style>
+
+        <Style TargetType="DataGrid">
+            <Setter Property="BorderBrush" Value="{StaticResource BorderBrush}"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="GridLinesVisibility" Value="Horizontal"/>
+            <Setter Property="HorizontalGridLinesBrush" Value="#EEF2F7"/>
+            <Setter Property="AlternatingRowBackground" Value="#F8FAFC"/>
+            <Setter Property="RowBackground" Value="White"/>
+            <Setter Property="RowHeight" Value="38"/>
+            <Setter Property="CanUserAddRows" Value="False"/>
+            <Setter Property="IsReadOnly" Value="True"/>
         </Style>
     </UserControl.Resources>
 
     <TabControl Margin="10" FontSize="14" FontWeight="SemiBold">
         <TabItem Header="فواتير الوقود">
-            <ScrollViewer VerticalScrollBarVisibility="Auto">
-                <StackPanel Margin="10">
+            <Grid Margin="6">
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="12"/>
+                    <RowDefinition Height="*"/>
+                </Grid.RowDefinitions>
 
-                    <StackPanel Orientation="Horizontal">
-                        <TextBlock Text="فواتير الوقود" FontSize="24" FontWeight="Bold" Foreground="#2D3748" VerticalAlignment="Center"/>
-                        <TextBlock Text="السنة المالية:" Style="{StaticResource LabelStyle}" FontSize="16" Margin="50,0,10,0" VerticalAlignment="Center"/>
-                        <ComboBox x:Name="YearComboBox" Width="100" Height="32" FontSize="16" VerticalAlignment="Center" SelectionChanged="RefreshData_Event"/>
-                    </StackPanel>
+                <!-- رأس الصفحة -->
+                <Border Grid.Row="0" Style="{StaticResource CardStyle}" Padding="18,12">
+                    <DockPanel LastChildFill="True">
+                        <StackPanel DockPanel.Dock="Right">
+                            <TextBlock Text="فواتير الوقود" FontSize="25" FontWeight="Bold" Foreground="{StaticResource TextBrush}"/>
+                            <TextBlock Text="إضافة الفواتير ومتابعة المدفوع وغير المدفوع من شاشة واحدة" Foreground="{StaticResource MutedBrush}" Margin="0,3,0,0"/>
+                        </StackPanel>
+                        <StackPanel Orientation="Horizontal" DockPanel.Dock="Left" VerticalAlignment="Center">
+                            <TextBlock Text="السنة المالية" Style="{StaticResource LabelStyle}" VerticalAlignment="Center" Margin="0,0,8,0"/>
+                            <ComboBox x:Name="YearComboBox" Width="105" Style="{StaticResource FieldComboBoxStyle}" Margin="0" SelectionChanged="RefreshData_Event"/>
+                        </StackPanel>
+                    </DockPanel>
+                </Border>
 
-                    <Border Background="White" BorderBrush="#CBD5E0" BorderThickness="1" CornerRadius="8" Padding="15" Margin="0,0,0,15">
-                        <Grid>
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="Auto"/>
-                                <ColumnDefinition Width="*"/>
-                                <ColumnDefinition Width="Auto"/>
-                                <ColumnDefinition Width="Auto"/>
-                                <ColumnDefinition Width="Auto"/>
-                            </Grid.ColumnDefinitions>
-                            <TextBlock Grid.Column="0" Text="رقم السيارة:" Style="{StaticResource LabelStyle}"/>
-                            <ComboBox x:Name="SearchCarComboBox" Grid.Column="1" Margin="0,0,20,0" Height="28"/>
-                            <StackPanel Grid.Column="2" Orientation="Horizontal">
-                                <TextBlock Text="من تاريخ:" Style="{StaticResource LabelStyle}"/>
-                                <TextBox x:Name="SearchFromDateTextBox" Width="110" Margin="0,0,10,0" TextAlignment="Center" KeyDown="DateInput_KeyDown"/>
-                                <TextBlock Text="إلى تاريخ:" Style="{StaticResource LabelStyle}"/>
-                                <TextBox x:Name="SearchToDateTextBox" Width="110" TextAlignment="Center" KeyDown="DateInput_KeyDown"/>
+                <!-- مساحة العمل -->
+                <Grid Grid.Row="2" FlowDirection="LeftToRight">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*" MinWidth="620"/>
+                        <ColumnDefinition Width="14"/>
+                        <ColumnDefinition Width="345"/>
+                    </Grid.ColumnDefinitions>
+
+                    <!-- البحث والملخص والنتائج -->
+                    <Grid Grid.Column="0" FlowDirection="RightToLeft">
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="10"/>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="10"/>
+                            <RowDefinition Height="*"/>
+                        </Grid.RowDefinitions>
+
+                        <Border Grid.Row="0" Style="{StaticResource CardStyle}">
+                            <StackPanel>
+                                <DockPanel Margin="0,0,0,10">
+                                    <StackPanel DockPanel.Dock="Right">
+                                        <TextBlock Text="بحث الفواتير" FontSize="18" FontWeight="Bold" Foreground="{StaticResource TextBrush}"/>
+                                        <TextBlock Text="حدد السيارة أو الفترة أو اعرض غير المدفوع فقط" Foreground="{StaticResource MutedBrush}" Margin="0,2,0,0"/>
+                                    </StackPanel>
+                                    <Button Content="طباعة" Style="{StaticResource SuccessButtonStyle}" Width="88" Height="36" DockPanel.Dock="Left" Margin="0" Click="Print_Click"/>
+                                </DockPanel>
+
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="1.4*"/>
+                                        <ColumnDefinition Width="110"/>
+                                        <ColumnDefinition Width="110"/>
+                                        <ColumnDefinition Width="Auto"/>
+                                    </Grid.ColumnDefinitions>
+
+                                    <StackPanel Grid.Column="0" Margin="0,0,8,0">
+                                        <TextBlock Text="السيارة" Style="{StaticResource LabelStyle}"/>
+                                        <ComboBox x:Name="SearchCarComboBox" Style="{StaticResource FieldComboBoxStyle}" Margin="0"/>
+                                    </StackPanel>
+                                    <StackPanel Grid.Column="1" Margin="0,0,8,0">
+                                        <TextBlock Text="من تاريخ" Style="{StaticResource LabelStyle}"/>
+                                        <TextBox x:Name="SearchFromDateTextBox" Style="{StaticResource FieldTextBoxStyle}" Margin="0" TextAlignment="Center" KeyDown="DateInput_KeyDown"/>
+                                    </StackPanel>
+                                    <StackPanel Grid.Column="2" Margin="0,0,8,0">
+                                        <TextBlock Text="إلى تاريخ" Style="{StaticResource LabelStyle}"/>
+                                        <TextBox x:Name="SearchToDateTextBox" Style="{StaticResource FieldTextBoxStyle}" Margin="0" TextAlignment="Center" KeyDown="DateInput_KeyDown"/>
+                                    </StackPanel>
+                                    <StackPanel Grid.Column="3" VerticalAlignment="Bottom">
+                                        <CheckBox x:Name="ShowUnpaidOnlyCheckBox" Content="غير المدفوع فقط" Margin="4,0,4,8" Checked="RefreshData_Event" Unchecked="RefreshData_Event"/>
+                                    </StackPanel>
+                                </Grid>
+
+                                <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,9,0,0">
+                                    <Button Content="بحث" Style="{StaticResource PrimaryButtonStyle}" Width="72" Margin="0,0,4,0" Click="RefreshData_Event"/>
+                                    <Button Content="عرض الكل" Style="{StaticResource SecondaryButton}" Width="90" Margin="0" Click="ShowAll_Click"/>
+                                </StackPanel>
                             </StackPanel>
-                            <CheckBox x:Name="ShowUnpaidOnlyCheckBox" Grid.Column="3" Content="عرض غير المدفوع فقط" VerticalAlignment="Center" Margin="20,0,0,0" Checked="RefreshData_Event" Unchecked="RefreshData_Event"/>
-                            <StackPanel Grid.Column="4" Orientation="Horizontal" HorizontalAlignment="Left" Margin="20,0,0,0">
-                                <Button Content="بحث" Click="RefreshData_Event"/>
-                                <Button Content="عرض الكل" Click="ShowAll_Click"/>
-                                <Button Content="طباعة" Margin="20,5,5,5" Background="{StaticResource SuccessBrush}" Click="Print_Click"/>
-                            </StackPanel>
-                        </Grid>
-                    </Border>
+                        </Border>
 
-                    <Border Background="White" BorderBrush="#CBD5E0" BorderThickness="1" CornerRadius="8" Padding="15" Margin="0,0,0,15">
-                        <StackPanel>
-                            <TextBlock Text="ملخص الاستهلاك حسب الفترة" FontSize="16" FontWeight="Bold" Foreground="{StaticResource PrimaryBrush}" Margin="0,0,0,10"/>
-                            <StackPanel Orientation="Horizontal">
-                                <TextBlock Text="السيارة:" Style="{StaticResource LabelStyle}"/>
-                                <ComboBox x:Name="SummaryCarComboBox" Width="150" Height="28"/>
-                                <TextBlock Text="من تاريخ:" Style="{StaticResource LabelStyle}" Margin="20,0,10,0"/>
-                                <TextBox x:Name="SummaryFromDateTextBox" Width="110" TextAlignment="Center" KeyDown="DateInput_KeyDown"/>
-                                <TextBlock Text="إلى تاريخ:" Style="{StaticResource LabelStyle}" Margin="20,0,10,0"/>
-                                <TextBox x:Name="SummaryToDateTextBox" Width="110" TextAlignment="Center" KeyDown="DateInput_KeyDown"/>
-                                <Button Content="احسب الإجمالي" Margin="20,0,0,0" Click="CalculateTotal_Click"/>
-                                <Border CornerRadius="5" Background="#EBF8FF" BorderBrush="#BEE3F8" BorderThickness="1" Padding="15,5" Margin="30,0,0,0" VerticalAlignment="Center">
-                                    <StackPanel Orientation="Horizontal">
-                                        <TextBlock Text="إجمالي الاستهلاك: " FontWeight="Bold" Foreground="#3182CE"/>
-                                        <TextBlock x:Name="TotalAmountTextBlock" Text="0.000" FontWeight="Bold" Foreground="#3182CE"/>
+                        <!-- ملخص سريع مضغوط -->
+                        <Border Grid.Row="2" Style="{StaticResource CardStyle}" Padding="14">
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="Auto"/>
+                                    <ColumnDefinition Width="130"/>
+                                    <ColumnDefinition Width="10"/>
+                                    <ColumnDefinition Width="105"/>
+                                    <ColumnDefinition Width="10"/>
+                                    <ColumnDefinition Width="105"/>
+                                    <ColumnDefinition Width="Auto"/>
+                                    <ColumnDefinition Width="*"/>
+                                </Grid.ColumnDefinitions>
+                                <TextBlock Grid.Column="0" Text="ملخص الاستهلاك" FontWeight="Bold" Foreground="{StaticResource TextBrush}" VerticalAlignment="Center" Margin="0,0,10,0"/>
+                                <ComboBox x:Name="SummaryCarComboBox" Grid.Column="1" Height="34"/>
+                                <TextBox x:Name="SummaryFromDateTextBox" Grid.Column="3" Height="34" TextAlignment="Center" KeyDown="DateInput_KeyDown" ToolTip="من تاريخ"/>
+                                <TextBox x:Name="SummaryToDateTextBox" Grid.Column="5" Height="34" TextAlignment="Center" KeyDown="DateInput_KeyDown" ToolTip="إلى تاريخ"/>
+                                <Button Grid.Column="6" Content="احسب" Style="{StaticResource PrimaryButtonStyle}" Width="72" Height="34" MinHeight="34" Margin="8,0,0,0" Click="CalculateTotal_Click"/>
+                                <Border Grid.Column="7" Background="#EFF6FF" BorderBrush="#BFDBFE" BorderThickness="1" CornerRadius="8" Padding="12,6" Margin="12,0,0,0">
+                                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
+                                        <TextBlock Text="الإجمالي: " Foreground="#1E40AF" FontWeight="SemiBold"/>
+                                        <TextBlock x:Name="TotalAmountTextBlock" Text="0.000" Foreground="#1D4ED8" FontWeight="Bold" FontSize="16"/>
                                     </StackPanel>
                                 </Border>
-                            </StackPanel>
-                        </StackPanel>
-                    </Border>
+                            </Grid>
+                        </Border>
 
-                    <Border Background="White" BorderBrush="#CBD5E0" BorderThickness="1" CornerRadius="8" Padding="15" Margin="0,0,0,15">
+                        <Border Grid.Row="4" Style="{StaticResource CardStyle}" Padding="10">
+                            <Grid>
+                                <Grid.RowDefinitions>
+                                    <RowDefinition Height="Auto"/>
+                                    <RowDefinition Height="8"/>
+                                    <RowDefinition Height="*"/>
+                                </Grid.RowDefinitions>
+                                <DockPanel Grid.Row="0">
+                                    <TextBlock Text="الفواتير" FontSize="16" FontWeight="Bold" Foreground="{StaticResource TextBrush}" DockPanel.Dock="Right"/>
+                                    <TextBlock Text="يمكن التعديل أو الحذف من نفس الصف" Foreground="{StaticResource MutedBrush}" DockPanel.Dock="Left"/>
+                                </DockPanel>
+                                <DataGrid x:Name="FuelInvoicesDataGrid" Grid.Row="2" AutoGenerateColumns="False">
+                                    <DataGrid.Columns>
+                                        <DataGridTextColumn Header="م" Binding="{Binding Id}" Width="50"/>
+                                        <DataGridTextColumn Header="السيارة" Binding="{Binding CarNumber}" Width="90"/>
+                                        <DataGridTextColumn Header="التاريخ" Binding="{Binding Date, StringFormat={x:Static local:AppSettings.DateFormat}}" Width="95"/>
+                                        <DataGridTextColumn Header="رقم الفاتورة" Binding="{Binding InvoiceNumber}" Width="100"/>
+                                        <DataGridTextColumn Header="المبلغ" Binding="{Binding Amount, StringFormat=N3}" Width="90"/>
+                                        <DataGridTemplateColumn Header="مدفوع" Width="65">
+                                            <DataGridTemplateColumn.CellTemplate>
+                                                <DataTemplate>
+                                                    <TextBlock HorizontalAlignment="Center" VerticalAlignment="Center" FontWeight="Bold">
+                                                        <TextBlock.Style>
+                                                            <Style TargetType="{x:Type TextBlock}">
+                                                                <Setter Property="Text" Value="لا"/>
+                                                                <Setter Property="Foreground" Value="#DC2626"/>
+                                                                <Style.Triggers>
+                                                                    <DataTrigger Binding="{Binding IsPaid}" Value="True">
+                                                                        <Setter Property="Text" Value="نعم"/>
+                                                                        <Setter Property="Foreground" Value="#059669"/>
+                                                                    </DataTrigger>
+                                                                </Style.Triggers>
+                                                            </Style>
+                                                        </TextBlock.Style>
+                                                    </TextBlock>
+                                                </DataTemplate>
+                                            </DataGridTemplateColumn.CellTemplate>
+                                        </DataGridTemplateColumn>
+                                        <DataGridTextColumn Header="غير المدفوع المتراكم" Binding="{Binding AccumulatedBalance, StringFormat=N3}" Width="125"/>
+                                        <DataGridTemplateColumn Header="إجراء" Width="126">
+                                            <DataGridTemplateColumn.CellTemplate>
+                                                <DataTemplate>
+                                                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
+                                                        <Button Content="تعديل" Style="{StaticResource EditButton}" Padding="8,1" MinHeight="27" Margin="2" Click="EditInvoice_Click"/>
+                                                        <Button Content="حذف" Style="{StaticResource DeleteButton}" Padding="8,1" MinHeight="27" Margin="2" Click="DeleteInvoice_Click"/>
+                                                    </StackPanel>
+                                                </DataTemplate>
+                                            </DataGridTemplateColumn.CellTemplate>
+                                        </DataGridTemplateColumn>
+                                    </DataGrid.Columns>
+                                </DataGrid>
+                            </Grid>
+                        </Border>
+                    </Grid>
+
+                    <!-- إضافة فاتورة ثابتة -->
+                    <Border Grid.Column="2" Style="{StaticResource CardStyle}" FlowDirection="RightToLeft" Padding="18">
                         <Grid>
                             <Grid.RowDefinitions>
                                 <RowDefinition Height="Auto"/>
-                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="10"/>
+                                <RowDefinition Height="*"/>
                             </Grid.RowDefinitions>
-                            <StackPanel Grid.Row="0" Orientation="Horizontal">
-                                <TextBlock Text="رقم السيارة:" Style="{StaticResource LabelStyle}"/>
-                                <ComboBox x:Name="InvoiceCarComboBox" Width="120" Height="28"/>
-
-                                <TextBlock Text="تاريخ الفاتورة:" Style="{StaticResource LabelStyle}" Margin="15,0,10,0"/>
-                                <TextBox x:Name="InvoiceDateTextBox" Width="120" TextAlignment="Center" KeyDown="InvoiceDate_KeyDown"/>
-
-                                <TextBlock Text="رقم الفاتورة:" Style="{StaticResource LabelStyle}" Margin="15,0,10,0"/>
-                                <TextBox x:Name="InvoiceNumberTextBox" Width="120" KeyDown="MoveFocusOnEnter"/>
-
-                                <TextBlock Text="المبلغ:" Style="{StaticResource LabelStyle}" Margin="15,0,10,0"/>
-                                <TextBox x:Name="AmountTextBox" Width="120" KeyDown="MoveFocusOnEnter"/>
-                                <CheckBox x:Name="IsPaidCheckBox" Content="تم الدفع" VerticalAlignment="Center" Margin="15,0,0,0"/>
+                            <StackPanel Grid.Row="0">
+                                <TextBlock Text="إضافة فاتورة وقود" FontSize="20" FontWeight="Bold" Foreground="{StaticResource PrimaryBrush}"/>
+                                <TextBlock Text="أدخل بيانات الفاتورة ثم حدد حالة الدفع" Foreground="{StaticResource MutedBrush}" Margin="0,4,0,0"/>
                             </StackPanel>
-                            <StackPanel Grid.Row="1" Orientation="Horizontal" HorizontalAlignment="Center" Margin="0,15,0,0">
-                                <Button x:Name="AddUpdateButton" Content="إضافة فاتورة" Click="AddUpdateInvoice_Click"/>
-                                <Button x:Name="ClearButton" Content="مسح" Background="{StaticResource SecondaryBrush}" Click="ClearFields_Click"/>
-                            </StackPanel>
+                            <ScrollViewer Grid.Row="2" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+                                <StackPanel Margin="0,2,4,4">
+                                    <TextBlock Text="رقم السيارة" Style="{StaticResource LabelStyle}"/>
+                                    <ComboBox x:Name="InvoiceCarComboBox" Style="{StaticResource FieldComboBoxStyle}"/>
+
+                                    <TextBlock Text="تاريخ الفاتورة" Style="{StaticResource LabelStyle}"/>
+                                    <TextBox x:Name="InvoiceDateTextBox" Style="{StaticResource FieldTextBoxStyle}" TextAlignment="Center" KeyDown="InvoiceDate_KeyDown"/>
+
+                                    <TextBlock Text="رقم الفاتورة" Style="{StaticResource LabelStyle}"/>
+                                    <TextBox x:Name="InvoiceNumberTextBox" Style="{StaticResource FieldTextBoxStyle}" KeyDown="MoveFocusOnEnter"/>
+
+                                    <TextBlock Text="المبلغ" Style="{StaticResource LabelStyle}"/>
+                                    <TextBox x:Name="AmountTextBox" Style="{StaticResource FieldTextBoxStyle}" TextAlignment="Center" KeyDown="MoveFocusOnEnter"/>
+
+                                    <Border Background="#F8FAFC" BorderBrush="{StaticResource BorderBrush}" BorderThickness="1" CornerRadius="8" Padding="10" Margin="0,2,0,12">
+                                        <CheckBox x:Name="IsPaidCheckBox" Content="تم دفع هذه الفاتورة" FontWeight="SemiBold"/>
+                                    </Border>
+
+                                    <Button x:Name="AddUpdateButton" Content="إضافة فاتورة" Style="{StaticResource SuccessButtonStyle}" Height="43" Margin="0,2,0,6" Click="AddUpdateInvoice_Click"/>
+                                    <Button x:Name="ClearButton" Content="مسح الحقول" Style="{StaticResource SecondaryButton}" Height="38" Margin="0" Click="ClearFields_Click"/>
+                                </StackPanel>
+                            </ScrollViewer>
                         </Grid>
                     </Border>
-
-                    <Border Background="White" BorderBrush="#CBD5E0" BorderThickness="1" CornerRadius="8" Padding="5">
-                        <DataGrid x:Name="FuelInvoicesDataGrid" AutoGenerateColumns="False" CanUserAddRows="False" IsReadOnly="True" MinHeight="300">
-                            <DataGrid.Columns>
-                                <DataGridTextColumn Header="ت. " Binding="{Binding Id}" Width="Auto"/>
-                                <DataGridTextColumn Header="رقم السيارة" Binding="{Binding CarNumber}" Width="*"/>
-                                <DataGridTextColumn Header="تاريخ الفاتورة" Binding="{Binding Date, StringFormat={x:Static local:AppSettings.DateFormat}}" Width="*"/>
-                                <DataGridTextColumn Header="رقم الفاتورة" Binding="{Binding InvoiceNumber}" Width="*"/>
-                                <DataGridTextColumn Header="المبلغ" Binding="{Binding Amount, StringFormat=N3}" Width="*"/>
-                                <DataGridTemplateColumn Header="تم الدفع" Width="Auto">
-                                    <DataGridTemplateColumn.CellTemplate>
-                                        <DataTemplate>
-                                            <TextBlock HorizontalAlignment="Center" VerticalAlignment="Center" FontWeight="Bold">
-                                                <TextBlock.Style>
-                                                    <Style TargetType="{x:Type TextBlock}">
-                                                        <Setter Property="Text" Value="لا"/>
-                                                        <Setter Property="Foreground" Value="Red"/>
-                                                        <Style.Triggers>
-                                                            <DataTrigger Binding="{Binding IsPaid}" Value="True">
-                                                                <Setter Property="Text" Value="نعم"/>
-                                                                <Setter Property="Foreground" Value="Green"/>
-                                                            </DataTrigger>
-                                                        </Style.Triggers>
-                                                    </Style>
-                                                </TextBlock.Style>
-                                            </TextBlock>
-                                        </DataTemplate>
-                                    </DataGridTemplateColumn.CellTemplate>
-                                </DataGridTemplateColumn>
-                                <DataGridTextColumn Header="الرصيد غير المدفوع المتراكم" Binding="{Binding AccumulatedBalance, StringFormat=N3}" Width="1.4*"/>
-                                <DataGridTemplateColumn Header="الإجراءات" Width="Auto">
-                                    <DataGridTemplateColumn.CellTemplate>
-                                        <DataTemplate>
-                                            <StackPanel Orientation="Horizontal">
-                                                <Button Content="تعديل" Style="{StaticResource EditButton}" Padding="10,4" Margin="2" MinWidth="60" Click="EditInvoice_Click"/>
-                                                <Button Content="حذف" Style="{StaticResource DeleteButton}" Padding="10,4" Margin="2" MinWidth="60" Click="DeleteInvoice_Click"/>
-                                            </StackPanel>
-                                        </DataTemplate>
-                                    </DataGridTemplateColumn.CellTemplate>
-                                </DataGridTemplateColumn>
-                            </DataGrid.Columns>
-                        </DataGrid>
-                    </Border>
-                </StackPanel>
-            </ScrollViewer>
+                </Grid>
+            </Grid>
         </TabItem>
 
         <TabItem Header="إدارة السيارات">
-            <StackPanel Margin="20" HorizontalAlignment="Center" VerticalAlignment="Center">
-                <Border Background="White" BorderBrush="#CBD5E0" BorderThickness="1" CornerRadius="8" Padding="25" Margin="0,0,0,20">
-                    <StackPanel Orientation="Horizontal">
-                        <TextBlock Text="رقم السيارة:" Style="{StaticResource LabelStyle}" FontSize="16"/>
-                        <TextBox x:Name="NewCarNumberTextBox" Width="200" FontSize="16" KeyDown="MoveFocusOnEnter"/>
-                        <Button Content="إضافة سيارة" Margin="20,0,0,0" FontSize="14" Click="AddCar_Click"/>
-                    </StackPanel>
+            <Grid Margin="20" MaxWidth="760" HorizontalAlignment="Center">
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="14"/>
+                    <RowDefinition Height="*"/>
+                </Grid.RowDefinitions>
+
+                <Border Grid.Row="0" Style="{StaticResource CardStyle}">
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="Auto"/>
+                        </Grid.ColumnDefinitions>
+                        <StackPanel Grid.Column="0">
+                            <TextBlock Text="إضافة سيارة" FontSize="19" FontWeight="Bold" Foreground="{StaticResource TextBrush}"/>
+                            <TextBox x:Name="NewCarNumberTextBox" Style="{StaticResource FieldTextBoxStyle}" Margin="0,10,12,0" FontSize="16" KeyDown="MoveFocusOnEnter"/>
+                        </StackPanel>
+                        <Button Grid.Column="1" Content="إضافة السيارة" Style="{StaticResource SuccessButtonStyle}" Width="120" Height="40" VerticalAlignment="Bottom" Margin="0" Click="AddCar_Click"/>
+                    </Grid>
                 </Border>
-                <Border Background="White" BorderBrush="#CBD5E0" BorderThickness="1" CornerRadius="8" Padding="5">
-                    <DataGrid x:Name="CarsDataGrid" AutoGenerateColumns="False" CanUserAddRows="False" IsReadOnly="True" MinHeight="300" MaxWidth="500">
+
+                <Border Grid.Row="2" Style="{StaticResource CardStyle}" Padding="10">
+                    <DataGrid x:Name="CarsDataGrid" AutoGenerateColumns="False">
                         <DataGrid.Columns>
                             <DataGridTextColumn Header="رقم السيارة" Binding="{Binding CarNumber}" Width="*"/>
-                            <DataGridTemplateColumn Header="إجراء" Width="Auto">
+                            <DataGridTemplateColumn Header="إجراء" Width="100">
                                 <DataGridTemplateColumn.CellTemplate>
                                     <DataTemplate>
-                                        <Button Content="حذف" Style="{StaticResource DeleteButton}" Padding="10,4" Margin="2" MinWidth="60" Click="DeleteCar_Click"/>
+                                        <Button Content="حذف" Style="{StaticResource DeleteButton}" Padding="10,2" MinHeight="28" Margin="2" Click="DeleteCar_Click"/>
                                     </DataTemplate>
                                 </DataGridTemplateColumn.CellTemplate>
                             </DataGridTemplateColumn>
                         </DataGrid.Columns>
                     </DataGrid>
                 </Border>
-            </StackPanel>
+            </Grid>
         </TabItem>
     </TabControl>
 </UserControl>
