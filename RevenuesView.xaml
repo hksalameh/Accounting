@@ -46,11 +46,10 @@
         </Grid.RowDefinitions>
 
         <StackPanel Grid.Row="0" Orientation="Horizontal">
-
             <TextBlock Text="الإيرادات" FontSize="24" FontWeight="Bold" Foreground="#2D3748" VerticalAlignment="Center"/>
             <TextBlock Text="السنة المالية:" Style="{StaticResource LabelStyle}" FontSize="16" Margin="50,0,10,0" VerticalAlignment="Center"/>
             <ComboBox x:Name="YearComboBox" Width="100" Height="32" FontSize="16" VerticalAlignment="Center" SelectionChanged="YearComboBox_SelectionChanged"/>
-            <TextBlock Text="رصيد الإيرادات:" Style="{StaticResource LabelStyle}" Margin="20,0,10,0" FontSize="16" FontWeight="Bold" VerticalAlignment="Center"/>
+            <TextBlock Text="رصيد الإيرادات للسنة:" Style="{StaticResource LabelStyle}" Margin="20,0,10,0" FontSize="16" FontWeight="Bold" VerticalAlignment="Center"/>
             <Border CornerRadius="8" Background="{StaticResource SuccessBrush}" Padding="20,8" VerticalAlignment="Center">
                 <TextBlock x:Name="RevenuesBalanceText" Text="0.000" FontSize="22" FontWeight="Bold" Foreground="White" />
             </Border>
@@ -85,7 +84,6 @@
         </GroupBox>
 
         <TabControl x:Name="InputTabControl" Grid.Row="2" Margin="0,0,0,15" FontSize="14" FontWeight="SemiBold" SelectionChanged="InputTabControl_SelectionChanged">
-
             <TabItem Header="إضافة / تعديل سند قبض">
                 <Border Background="White" Padding="15" BorderThickness="1" BorderBrush="#CBD5E0" CornerRadius="0,0,8,8">
                     <Grid>
@@ -153,7 +151,6 @@
         </TabControl>
 
         <TabControl x:Name="DataTabControl" Grid.Row="3" FontSize="14" FontWeight="SemiBold" SelectionChanged="DataTabControl_SelectionChanged">
-
             <TabItem Header="سندات القبض">
                 <DataGrid x:Name="ReceiptsDataGrid" AutoGenerateColumns="False" CanUserAddRows="False" IsReadOnly="True" ItemsSource="{Binding ReceiptVouchers}" MinHeight="250">
                     <DataGrid.Columns>
