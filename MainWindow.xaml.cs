@@ -4,6 +4,8 @@ using System.Diagnostics;
 using System.IO;
 using System.Reflection;
 using System.Windows;
+using System.Windows.Controls;
+using System.Windows.Data;
 
 namespace AccountingApp
 {
@@ -38,6 +40,157 @@ namespace AccountingApp
         private void Fuel_Click(object sender, RoutedEventArgs e)
         {
             ContentArea.Child = new FuelView();
+        }
+
+        private void ExportExcel_Click(object sender, RoutedEventArgs e)
+        {
+            int? year = SelectFiscalYearForExport();
+            if (!year.HasValue) return;
+
+            var dialog = new SaveFileDialog
+            {
+                Title = "حفظ تقرير السنة المالية",
+                Filter = "ملف Excel XML (*.xml)|*.xml",
+                FileName = $"تقرير-المحاسبة-{year.Value}.xml",
+                AddExtension = true,
+                DefaultExt = ".xml"
+            };
+
+            if (dialog.ShowDialog() != true) return;
+
+            try
+            {
+                ReportExportService.ExportYearToExcelXml(year.Value, dialog.FileName);
+
+                if (MessageBox.Show(
+                    "تم تصدير تقرير السنة بنجاح.\n\nهل تريد فتح الملف الآن؟",
+                    "تم التصدير",
+                    MessageBoxButton.YesNo,
+                    MessageBoxImage.Information) == MessageBoxResult.Yes)
+                {
+                    Process.Start(dialog.FileName);
+                }
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show(
+                    "تعذر تصدير التقرير إلى Excel.\n\n" + ex.Message,
+                    "خطأ في التصدير",
+                    MessageBoxButton.OK,
+                    MessageBoxImage.Error);
+            }
+        }
+
+        private int? SelectFiscalYearForExport()
+        {
+            var combo = new ComboBox
+            {
+                Width = 140,
+                Height = 32,
+                FontSize = 16,
+                HorizontalAlignment = HorizontalAlignment.Center
+            };
+            FiscalYearHelper.PopulateYears(combo);
+            combo.SelectedItem = FiscalYearHelper.CurrentYear.ToString();
+            if (combo.SelectedItem == null && combo.Items.Count > 0) combo.SelectedIndex = combo.Items.Count - 1;
+
+            var okButton = new Button { Content = "تصدير", Width = 100, Height = 34, Margin = new Thickness(5) };
+            var cancelButton = new Button { Content = "إلغاء", Width = 100, Height = 34, Margin = new Thickness(5) };
+            var buttons = new StackPanel { Orientation = Orientation.Horizontal, HorizontalAlignment = HorizontalAlignment.Center };
+            buttons.Children.Add(okButton);
+            buttons.Children.Add(cancelButton);
+
+            var content = new StackPanel { Margin = new Thickness(20) };
+            content.Children.Add(new TextBlock
+            {
+                Text = "اختر السنة المالية المراد تصديرها:",
+                FontSize = 16,
+                FontWeight = FontWeights.SemiBold,
+                Margin = new Thickness(0, 0, 0, 12),
+                TextAlignment = TextAlignment.Center
+            });
+            content.Children.Add(combo);
+            content.Children.Add(buttons);
+
+            var window = new Window
+            {
+                Title = "تصدير تقرير Excel",
+                Owner = this,
+                WindowStartupLocation = WindowStartupLocation.CenterOwner,
+                ResizeMode = ResizeMode.NoResize,
+                SizeToContent = SizeToContent.WidthAndHeight,
+                FlowDirection = FlowDirection.RightToLeft,
+                Content = content
+            };
+
+            int? result = null;
+            okButton.Click += (s, e) =>
+            {
+                if (int.TryParse(combo.SelectedItem?.ToString(), out int selectedYear))
+                {
+                    result = selectedYear;
+                    window.DialogResult = true;
+                }
+            };
+            cancelButton.Click += (s, e) => window.DialogResult = false;
+
+            return window.ShowDialog() == true ? result : null;
+        }
+
+        private void AuditLog_Click(object sender, RoutedEventArgs e)
+        {
+            try
+            {
+                var grid = new DataGrid
+                {
+                    AutoGenerateColumns = false,
+                    IsReadOnly = true,
+                    CanUserAddRows = false,
+                    ItemsSource = AuditService.LoadRecent(1000),
+                    Margin = new Thickness(10),
+                    HeadersVisibility = DataGridHeadersVisibility.Column,
+                    GridLinesVisibility = DataGridGridLinesVisibility.Horizontal
+                };
+
+                grid.Columns.Add(CreateTextColumn("الوقت", "EventTime", 150));
+                grid.Columns.Add(CreateTextColumn("العملية", "Action", 80));
+                grid.Columns.Add(CreateTextColumn("القسم", "EntityName", 130));
+                grid.Columns.Add(CreateTextColumn("رقم السجل", "RecordId", 90));
+                grid.Columns.Add(CreateTextColumn("التفاصيل", "Details", 360));
+                grid.Columns.Add(CreateTextColumn("المستخدم", "UserName", 120));
+                grid.Columns.Add(CreateTextColumn("الجهاز", "MachineName", 130));
+
+                var window = new Window
+                {
+                    Title = "سجل التعديلات والحذف",
+                    Owner = this,
+                    Width = 1150,
+                    Height = 680,
+                    WindowStartupLocation = WindowStartupLocation.CenterOwner,
+                    FlowDirection = FlowDirection.RightToLeft,
+                    Content = grid
+                };
+
+                window.ShowDialog();
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show(
+                    "تعذر قراءة سجل التعديلات.\n\n" + ex.Message,
+                    "خطأ",
+                    MessageBoxButton.OK,
+                    MessageBoxImage.Error);
+            }
+        }
+
+        private static DataGridTextColumn CreateTextColumn(string header, string propertyName, double width)
+        {
+            return new DataGridTextColumn
+            {
+                Header = header,
+                Binding = new Binding(propertyName),
+                Width = width
+            };
         }
 
         private void Backup_Click(object sender, RoutedEventArgs e)
