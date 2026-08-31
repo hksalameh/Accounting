@@ -85,7 +85,7 @@
                                 <Button Content="احسب الإجمالي" Margin="20,0,0,0" Click="CalculateTotal_Click"/>
                                 <Border CornerRadius="5" Background="#EBF8FF" BorderBrush="#BEE3F8" BorderThickness="1" Padding="15,5" Margin="30,0,0,0" VerticalAlignment="Center">
                                     <StackPanel Orientation="Horizontal">
-                                        <TextBlock Text="الإجمالي: " FontWeight="Bold" Foreground="#3182CE"/>
+                                        <TextBlock Text="إجمالي الاستهلاك: " FontWeight="Bold" Foreground="#3182CE"/>
                                         <TextBlock x:Name="TotalAmountTextBlock" Text="0.000" FontWeight="Bold" Foreground="#3182CE"/>
                                     </StackPanel>
                                 </Border>
@@ -125,10 +125,8 @@
                             <DataGrid.Columns>
                                 <DataGridTextColumn Header="ت. " Binding="{Binding Id}" Width="Auto"/>
                                 <DataGridTextColumn Header="رقم السيارة" Binding="{Binding CarNumber}" Width="*"/>
-
                                 <DataGridTextColumn Header="تاريخ الفاتورة" Binding="{Binding Date, StringFormat={x:Static local:AppSettings.DateFormat}}" Width="*"/>
                                 <DataGridTextColumn Header="رقم الفاتورة" Binding="{Binding InvoiceNumber}" Width="*"/>
-
                                 <DataGridTextColumn Header="المبلغ" Binding="{Binding Amount, StringFormat=N3}" Width="*"/>
                                 <DataGridTemplateColumn Header="تم الدفع" Width="Auto">
                                     <DataGridTemplateColumn.CellTemplate>
@@ -150,7 +148,7 @@
                                         </DataTemplate>
                                     </DataGridTemplateColumn.CellTemplate>
                                 </DataGridTemplateColumn>
-                                <DataGridTextColumn Header="الرصيد المتراكم" Binding="{Binding AccumulatedBalance, StringFormat=N3}" Width="*"/>
+                                <DataGridTextColumn Header="الرصيد غير المدفوع المتراكم" Binding="{Binding AccumulatedBalance, StringFormat=N3}" Width="1.4*"/>
                                 <DataGridTemplateColumn Header="الإجراءات" Width="Auto">
                                     <DataGridTemplateColumn.CellTemplate>
                                         <DataTemplate>
