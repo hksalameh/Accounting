@@ -3,22 +3,29 @@ using System;
 
 namespace AccountingApp
 {
+    public sealed class DashboardSnapshot
+    {
+        public int Year { get; set; }
+        public decimal TotalReceipts { get; set; }
+        public decimal TotalDeposits { get; set; }
+        public decimal RevenuesBalance { get; set; }
+        public decimal OpeningBalance { get; set; }
+        public decimal FundAdditions { get; set; }
+        public decimal InvoiceExpenses { get; set; }
+        public decimal InvoicesBalance { get; set; }
+        public decimal TotalAids { get; set; }
+        public decimal TotalFuel { get; set; }
+        public decimal UnpaidFuel { get; set; }
+        public decimal FundBalance => RevenuesBalance + InvoicesBalance;
+    }
+
     public static class DashboardManager
     {
         private static readonly string _connectionString = DatabaseService.ConnectionString;
 
-        /// <summary>
-        /// Reads all dashboard balances for one financial year as one operation.
-        /// If any database read fails, no financial value is returned as a misleading zero.
-        /// </summary>
-        public static bool TryGetBalances(
-            int year,
-            out decimal revenuesBalance,
-            out decimal invoicesBalance,
-            out string errorMessage)
+        public static bool TryGetSnapshot(int year, out DashboardSnapshot snapshot, out string errorMessage)
         {
-            revenuesBalance = 0;
-            invoicesBalance = 0;
+            snapshot = null;
             errorMessage = null;
 
             try
@@ -27,48 +34,75 @@ namespace AccountingApp
                 {
                     conn.Open();
 
-                    decimal totalReceipts = ExecuteScalarDecimal(
-                        conn,
-                        "SELECT COALESCE(SUM(Amount), 0) FROM ReceiptVouchers WHERE Year = @Year",
-                        year);
+                    var result = new DashboardSnapshot
+                    {
+                        Year = year,
+                        TotalReceipts = ExecuteScalarDecimal(
+                            conn,
+                            "SELECT COALESCE(SUM(Amount), 0) FROM ReceiptVouchers WHERE Year = @Year",
+                            year),
+                        TotalDeposits = ExecuteScalarDecimal(
+                            conn,
+                            "SELECT COALESCE(SUM(Amount), 0) FROM Deposits WHERE Year = @Year",
+                            year),
+                        OpeningBalance = ExecuteScalarDecimal(
+                            conn,
+                            "SELECT COALESCE(Balance, 0) FROM OpeningBalances WHERE Year = @Year",
+                            year),
+                        FundAdditions = ExecuteScalarDecimal(
+                            conn,
+                            "SELECT COALESCE(SUM(Debit), 0) FROM Invoices WHERE Year = @Year",
+                            year),
+                        InvoiceExpenses = ExecuteScalarDecimal(
+                            conn,
+                            "SELECT COALESCE(SUM(Credit), 0) FROM Invoices WHERE Year = @Year",
+                            year),
+                        TotalAids = ExecuteScalarDecimal(
+                            conn,
+                            "SELECT COALESCE(SUM(Amount), 0) FROM Aids WHERE Year = @Year",
+                            year),
+                        TotalFuel = ExecuteScalarDecimal(
+                            conn,
+                            "SELECT COALESCE(SUM(Amount), 0) FROM FuelInvoices WHERE Year = @Year",
+                            year),
+                        UnpaidFuel = ExecuteScalarDecimal(
+                            conn,
+                            "SELECT COALESCE(SUM(Amount), 0) FROM FuelInvoices WHERE Year = @Year AND IsPaid = 0",
+                            year)
+                    };
 
-                    decimal totalDeposits = ExecuteScalarDecimal(
-                        conn,
-                        "SELECT COALESCE(SUM(Amount), 0) FROM Deposits WHERE Year = @Year",
-                        year);
-
-                    decimal openingBalance = ExecuteScalarDecimal(
-                        conn,
-                        "SELECT COALESCE(Balance, 0) FROM OpeningBalances WHERE Year = @Year",
-                        year);
-
-                    decimal totalFundAdditions = ExecuteScalarDecimal(
-                        conn,
-                        "SELECT COALESCE(SUM(Debit), 0) FROM Invoices WHERE Year = @Year",
-                        year);
-
-                    decimal totalInvoiceExpenses = ExecuteScalarDecimal(
-                        conn,
-                        "SELECT COALESCE(SUM(Credit), 0) FROM Invoices WHERE Year = @Year",
-                        year);
-
-                    // الإيرادات مستقلة لكل سنة مالية.
-                    revenuesBalance = totalReceipts - totalDeposits;
-
-                    // صندوق الفواتير: الرصيد الافتتاحي + تغذيات الصندوق - الفواتير المصروفة.
-                    invoicesBalance = openingBalance + totalFundAdditions - totalInvoiceExpenses;
+                    result.RevenuesBalance = result.TotalReceipts - result.TotalDeposits;
+                    result.InvoicesBalance = result.OpeningBalance + result.FundAdditions - result.InvoiceExpenses;
+                    snapshot = result;
                 }
 
                 return true;
             }
             catch (Exception ex)
             {
-                // لا نحول خطأ قاعدة البيانات إلى رصيد صفر؛ نعيد فشل واضح للواجهة.
                 errorMessage = ex.Message;
-                revenuesBalance = 0;
-                invoicesBalance = 0;
+                snapshot = null;
                 return false;
             }
+        }
+
+        public static bool TryGetBalances(
+            int year,
+            out decimal revenuesBalance,
+            out decimal invoicesBalance,
+            out string errorMessage)
+        {
+            revenuesBalance = 0;
+            invoicesBalance = 0;
+
+            if (!TryGetSnapshot(year, out DashboardSnapshot snapshot, out errorMessage))
+            {
+                return false;
+            }
+
+            revenuesBalance = snapshot.RevenuesBalance;
+            invoicesBalance = snapshot.InvoicesBalance;
+            return true;
         }
 
         private static decimal ExecuteScalarDecimal(SqliteConnection conn, string sql, int year)
@@ -87,8 +121,6 @@ namespace AccountingApp
             }
         }
 
-        // نبقي الدوال القديمة للتوافق مع أي استدعاءات حالية داخل المشروع،
-        // لكن لا نخفي أخطاء قاعدة البيانات بعد الآن.
         public static decimal GetRevenuesBalance(int year)
         {
             if (!TryGetBalances(year, out decimal revenuesBalance, out _, out string errorMessage))
