@@ -7,62 +7,106 @@ namespace AccountingApp
     {
         private static readonly string _connectionString = DatabaseService.ConnectionString;
 
-        private static decimal ExecuteScalarDecimal(string sql, int year)
+        /// <summary>
+        /// Reads all dashboard balances for one financial year as one operation.
+        /// If any database read fails, no financial value is returned as a misleading zero.
+        /// </summary>
+        public static bool TryGetBalances(
+            int year,
+            out decimal revenuesBalance,
+            out decimal invoicesBalance,
+            out string errorMessage)
         {
+            revenuesBalance = 0;
+            invoicesBalance = 0;
+            errorMessage = null;
+
             try
             {
                 using (var conn = new SqliteConnection(_connectionString))
                 {
                     conn.Open();
-                    using (var cmd = new SqliteCommand(sql, conn))
-                    {
-                        cmd.Parameters.AddWithValue("@Year", year);
-                        var result = cmd.ExecuteScalar();
-                        if (result != DBNull.Value && result != null)
-                        {
-                            return Convert.ToDecimal(result);
-                        }
-                    }
+
+                    decimal totalReceipts = ExecuteScalarDecimal(
+                        conn,
+                        "SELECT COALESCE(SUM(Amount), 0) FROM ReceiptVouchers WHERE Year = @Year",
+                        year);
+
+                    decimal totalDeposits = ExecuteScalarDecimal(
+                        conn,
+                        "SELECT COALESCE(SUM(Amount), 0) FROM Deposits WHERE Year = @Year",
+                        year);
+
+                    decimal openingBalance = ExecuteScalarDecimal(
+                        conn,
+                        "SELECT COALESCE(Balance, 0) FROM OpeningBalances WHERE Year = @Year",
+                        year);
+
+                    decimal totalFundAdditions = ExecuteScalarDecimal(
+                        conn,
+                        "SELECT COALESCE(SUM(Debit), 0) FROM Invoices WHERE Year = @Year",
+                        year);
+
+                    decimal totalInvoiceExpenses = ExecuteScalarDecimal(
+                        conn,
+                        "SELECT COALESCE(SUM(Credit), 0) FROM Invoices WHERE Year = @Year",
+                        year);
+
+                    // الإيرادات مستقلة لكل سنة مالية.
+                    revenuesBalance = totalReceipts - totalDeposits;
+
+                    // صندوق الفواتير: الرصيد الافتتاحي + تغذيات الصندوق - الفواتير المصروفة.
+                    invoicesBalance = openingBalance + totalFundAdditions - totalInvoiceExpenses;
                 }
+
+                return true;
             }
-            catch (SqliteException) { return 0; }
-            return 0;
+            catch (Exception ex)
+            {
+                // لا نحول خطأ قاعدة البيانات إلى رصيد صفر؛ نعيد فشل واضح للواجهة.
+                errorMessage = ex.Message;
+                revenuesBalance = 0;
+                invoicesBalance = 0;
+                return false;
+            }
         }
 
+        private static decimal ExecuteScalarDecimal(SqliteConnection conn, string sql, int year)
+        {
+            using (var cmd = new SqliteCommand(sql, conn))
+            {
+                cmd.Parameters.AddWithValue("@Year", year);
+                var result = cmd.ExecuteScalar();
+
+                if (result == null || result == DBNull.Value)
+                {
+                    return 0;
+                }
+
+                return Convert.ToDecimal(result);
+            }
+        }
+
+        // نبقي الدوال القديمة للتوافق مع أي استدعاءات حالية داخل المشروع،
+        // لكن لا نخفي أخطاء قاعدة البيانات بعد الآن.
         public static decimal GetRevenuesBalance(int year)
         {
-            string receiptsSql = "SELECT SUM(Amount) FROM ReceiptVouchers WHERE Year = @Year";
-            string depositsSql = "SELECT SUM(Amount) FROM Deposits WHERE Year = @Year";
+            if (!TryGetBalances(year, out decimal revenuesBalance, out _, out string errorMessage))
+            {
+                throw new InvalidOperationException("تعذر قراءة رصيد الإيرادات من قاعدة البيانات.", new Exception(errorMessage));
+            }
 
-            decimal totalReceipts = ExecuteScalarDecimal(receiptsSql, year);
-            decimal totalDeposits = ExecuteScalarDecimal(depositsSql, year);
-
-            return totalReceipts - totalDeposits;
+            return revenuesBalance;
         }
 
         public static decimal GetInvoicesBalance(int year)
         {
-            decimal openingBalance = 0;
-            try
+            if (!TryGetBalances(year, out _, out decimal invoicesBalance, out string errorMessage))
             {
-                using (var conn = new SqliteConnection(_connectionString))
-                {
-                    conn.Open();
-                    var cmd = new SqliteCommand("SELECT Balance FROM OpeningBalances WHERE Year = @Year", conn);
-                    cmd.Parameters.AddWithValue("@Year", year);
-                    var result = cmd.ExecuteScalar();
-                    if (result != null) decimal.TryParse(result.ToString(), out openingBalance);
-                }
+                throw new InvalidOperationException("تعذر قراءة رصيد صندوق الفواتير من قاعدة البيانات.", new Exception(errorMessage));
             }
-            catch (SqliteException) { openingBalance = 0; }
 
-            string debitSql = "SELECT SUM(Debit) FROM Invoices WHERE Year = @Year";
-            string creditSql = "SELECT SUM(Credit) FROM Invoices WHERE Year = @Year";
-
-            decimal totalDebit = ExecuteScalarDecimal(debitSql, year);
-            decimal totalCredit = ExecuteScalarDecimal(creditSql, year);
-
-            return openingBalance + totalDebit - totalCredit;
+            return invoicesBalance;
         }
     }
 }
