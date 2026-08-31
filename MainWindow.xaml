@@ -1,4 +1,4 @@
-﻿<Window x:Class="AccountingApp.MainWindow"
+<Window x:Class="AccountingApp.MainWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         Title="برنامج المحاسبة" Height="800" Width="1200"
@@ -23,6 +23,9 @@
                 <Button Content="الإيرادات" Margin="0 5" Height="40" Click="Revenues_Click"/>
                 <Button Content="المساعدات" Margin="0 5" Height="40" Click="Aids_Click"/>
                 <Button Content="الوقود" Margin="0 5" Height="40" Click="Fuel_Click"/>
+                <Separator Margin="0 10"/>
+                <Button Content="نسخة احتياطية" Margin="0 5" Height="40" Background="#4A5568" Foreground="White" Click="Backup_Click"/>
+                <Button Content="استعادة نسخة" Margin="0 5" Height="40" Background="#4A5568" Foreground="White" Click="Restore_Click"/>
                 <Separator Margin="0 10"/>
                 <Button Content="خروج" Margin="0 5" Height="40" Background="DarkRed" Foreground="White" Click="Exit_Click"/>
             </StackPanel>
