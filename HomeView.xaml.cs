@@ -1,4 +1,4 @@
-﻿using System.Windows;
+using System.Windows;
 using System.Windows.Controls;
 
 namespace AccountingApp
@@ -30,16 +30,9 @@ namespace AccountingApp
 
             int selectedYear = int.Parse(YearComboBox.SelectedItem.ToString());
 
-            if (!DashboardManager.TryGetBalances(
-                selectedYear,
-                out decimal revenuesBalance,
-                out decimal invoicesBalance,
-                out string errorMessage))
+            if (!DashboardManager.TryGetSnapshot(selectedYear, out DashboardSnapshot snapshot, out string errorMessage))
             {
-                // عند فشل القراءة لا نعرض صفراً لأنه قد يُفهم على أنه رصيد حقيقي.
-                TotalRevenuesText.Text = "—";
-                TotalExpensesText.Text = "—";
-                FundBalanceText.Text = "—";
+                SetFinancialValuesUnavailable();
                 BalanceErrorText.Text = "تعذر قراءة الأرصدة من قاعدة البيانات. تأكد من ملف قاعدة البيانات ثم أعد فتح الصفحة.";
                 BalanceErrorText.ToolTip = errorMessage;
                 BalanceErrorText.Visibility = Visibility.Visible;
@@ -49,16 +42,34 @@ namespace AccountingApp
             BalanceErrorText.Visibility = Visibility.Collapsed;
             BalanceErrorText.ToolTip = null;
 
-            // الرصيد العام للصندوق يجمع رصيد الإيرادات مع رصيد صندوق الفواتير.
-            decimal fundBalance = revenuesBalance + invoicesBalance;
-
             RevenuesBalanceCardTitle.Text = "رصيد الإيرادات";
-            TotalRevenuesText.Text = revenuesBalance.ToString("N3");
+            TotalRevenuesText.Text = snapshot.RevenuesBalance.ToString("N3");
 
             InvoicesBalanceCardTitle.Text = "رصيد صندوق الفواتير";
-            TotalExpensesText.Text = invoicesBalance.ToString("N3");
+            TotalExpensesText.Text = snapshot.InvoicesBalance.ToString("N3");
 
-            FundBalanceText.Text = fundBalance.ToString("N3");
+            FundBalanceText.Text = snapshot.FundBalance.ToString("N3");
+            TotalReceiptsSummaryText.Text = snapshot.TotalReceipts.ToString("N3");
+            TotalDepositsSummaryText.Text = snapshot.TotalDeposits.ToString("N3");
+            FundAdditionsSummaryText.Text = snapshot.FundAdditions.ToString("N3");
+            InvoiceExpensesSummaryText.Text = snapshot.InvoiceExpenses.ToString("N3");
+            AidsSummaryText.Text = snapshot.TotalAids.ToString("N3");
+            FuelSummaryText.Text = snapshot.TotalFuel.ToString("N3");
+            UnpaidFuelSummaryText.Text = snapshot.UnpaidFuel.ToString("N3");
+        }
+
+        private void SetFinancialValuesUnavailable()
+        {
+            TotalRevenuesText.Text = "—";
+            TotalExpensesText.Text = "—";
+            FundBalanceText.Text = "—";
+            TotalReceiptsSummaryText.Text = "—";
+            TotalDepositsSummaryText.Text = "—";
+            FundAdditionsSummaryText.Text = "—";
+            InvoiceExpensesSummaryText.Text = "—";
+            AidsSummaryText.Text = "—";
+            FuelSummaryText.Text = "—";
+            UnpaidFuelSummaryText.Text = "—";
         }
     }
 }
