@@ -3,116 +3,286 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:local="clr-namespace:AccountingApp"
              FlowDirection="RightToLeft"
-             Background="#F7FAFC"
+             Background="#F1F5F9"
              Loaded="UserControl_Loaded">
-
     <UserControl.Resources>
         <local:ZeroToEmptyStringConverter x:Key="ZeroToEmptyStringConverter" />
+
+        <SolidColorBrush x:Key="PrimaryBrush" Color="#2563EB"/>
+        <SolidColorBrush x:Key="SuccessBrush" Color="#059669"/>
+        <SolidColorBrush x:Key="WarningBrush" Color="#D97706"/>
+        <SolidColorBrush x:Key="DangerBrush" Color="#DC2626"/>
+        <SolidColorBrush x:Key="TextBrush" Color="#0F172A"/>
+        <SolidColorBrush x:Key="MutedBrush" Color="#64748B"/>
+        <SolidColorBrush x:Key="BorderBrush" Color="#E2E8F0"/>
+
+        <Style x:Key="CardStyle" TargetType="Border">
+            <Setter Property="Background" Value="White"/>
+            <Setter Property="CornerRadius" Value="14"/>
+            <Setter Property="BorderBrush" Value="{StaticResource BorderBrush}"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="Padding" Value="16"/>
+            <Setter Property="Effect">
+                <Setter.Value>
+                    <DropShadowEffect ShadowDepth="1" Opacity="0.05" BlurRadius="12"/>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <Style x:Key="LabelStyle" TargetType="TextBlock">
+            <Setter Property="FontWeight" Value="SemiBold"/>
+            <Setter Property="Foreground" Value="#475569"/>
+            <Setter Property="Margin" Value="0,0,0,5"/>
+        </Style>
+
+        <Style x:Key="FieldTextBoxStyle" TargetType="TextBox">
+            <Setter Property="Height" Value="38"/>
+            <Setter Property="Padding" Value="9,5"/>
+            <Setter Property="VerticalContentAlignment" Value="Center"/>
+            <Setter Property="BorderBrush" Value="#CBD5E1"/>
+            <Setter Property="Margin" Value="0,0,0,11"/>
+        </Style>
+
+        <Style x:Key="FieldComboBoxStyle" TargetType="ComboBox">
+            <Setter Property="Height" Value="38"/>
+            <Setter Property="Padding" Value="6,3"/>
+            <Setter Property="BorderBrush" Value="#CBD5E1"/>
+        </Style>
+
+        <Style x:Key="PrimaryButtonStyle" TargetType="Button" BasedOn="{StaticResource AppButtonStyle}">
+            <Setter Property="Background" Value="{StaticResource PrimaryBrush}"/>
+            <Setter Property="Foreground" Value="White"/>
+            <Setter Property="FontWeight" Value="SemiBold"/>
+            <Setter Property="MinHeight" Value="36"/>
+            <Setter Property="Padding" Value="15,5"/>
+            <Setter Property="Margin" Value="3"/>
+            <Setter Property="BorderThickness" Value="0"/>
+        </Style>
+        <Style x:Key="SuccessButtonStyle" TargetType="Button" BasedOn="{StaticResource PrimaryButtonStyle}">
+            <Setter Property="Background" Value="{StaticResource SuccessBrush}"/>
+        </Style>
+        <Style x:Key="WarningButtonStyle" TargetType="Button" BasedOn="{StaticResource PrimaryButtonStyle}">
+            <Setter Property="Background" Value="{StaticResource WarningBrush}"/>
+        </Style>
+        <Style x:Key="DangerButtonStyle" TargetType="Button" BasedOn="{StaticResource PrimaryButtonStyle}">
+            <Setter Property="Background" Value="{StaticResource DangerBrush}"/>
+        </Style>
+
         <Style x:Key="CenteredCellStyle" TargetType="TextBlock">
             <Setter Property="HorizontalAlignment" Value="Center"/>
             <Setter Property="VerticalAlignment" Value="Center"/>
             <Setter Property="TextAlignment" Value="Center"/>
-            <Setter Property="FontSize" Value="14"/>
+            <Setter Property="FontSize" Value="13"/>
         </Style>
-        <Style TargetType="Button" BasedOn="{StaticResource AppButtonStyle}">
-            <Setter Property="Background" Value="#3182CE"/>
-            <Setter Property="Foreground" Value="White"/>
-            <Setter Property="FontWeight" Value="Bold"/>
-            <Setter Property="Margin" Value="5"/>
-            <Setter Property="Padding" Value="10,5"/>
-            <Setter Property="HorizontalContentAlignment" Value="Center"/>
-            <Setter Property="VerticalContentAlignment" Value="Center"/>
-            <Setter Property="Cursor" Value="Hand"/>
+
+        <Style TargetType="DataGrid">
+            <Setter Property="BorderBrush" Value="{StaticResource BorderBrush}"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="GridLinesVisibility" Value="Horizontal"/>
+            <Setter Property="HorizontalGridLinesBrush" Value="#EEF2F7"/>
+            <Setter Property="AlternatingRowBackground" Value="#F8FAFC"/>
+            <Setter Property="RowBackground" Value="White"/>
+            <Setter Property="RowHeight" Value="38"/>
+            <Setter Property="CanUserAddRows" Value="False"/>
+            <Setter Property="SelectionMode" Value="Single"/>
+            <Setter Property="SelectionUnit" Value="FullRow"/>
+            <Setter Property="IsReadOnly" Value="True"/>
         </Style>
     </UserControl.Resources>
 
-    <Grid Margin="20">
+    <Grid Margin="16">
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto"/>
-            <RowDefinition Height="Auto"/>
-            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="12"/>
             <RowDefinition Height="*"/>
-            <RowDefinition Height="Auto"/>
         </Grid.RowDefinitions>
 
-        <!-- السنة المالية ورصيد الصندوق -->
-        <StackPanel Grid.Row="0" Orientation="Horizontal" HorizontalAlignment="Center" Margin="0,0,0,20">
-            <TextBlock Text="السنة المالية:" VerticalAlignment="Center" FontWeight="Bold" FontSize="18" Margin="0 0 5 0"/>
-            <ComboBox x:Name="YearComboBox" Width="87" Height="28" FontSize="16"
-                      SelectionChanged="YearComboBox_SelectionChanged" Margin="0,0,30,0"
-                      HorizontalAlignment="Center" VerticalAlignment="Center"/>
+        <!-- الرأس والأرصدة -->
+        <Border Grid.Row="0" Style="{StaticResource CardStyle}" Padding="18,12">
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="14"/>
+                    <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="14"/>
+                    <ColumnDefinition Width="Auto"/>
+                </Grid.ColumnDefinitions>
 
-            <TextBlock Text="رصيد الصندوق:" VerticalAlignment="Center" FontWeight="Bold" FontSize="16" Margin="0,0,5,0"/>
-            <TextBlock x:Name="InvoicesBalanceText" Text="0.000" FontSize="20" FontWeight="Bold"
-                       Foreground="White" Background="#2F855A" Padding="15,7"
-                       TextAlignment="Center" Margin="0,0,20,0"/>
+                <StackPanel Grid.Column="0">
+                    <TextBlock Text="صندوق الفواتير" FontSize="25" FontWeight="Bold" Foreground="{StaticResource TextBrush}"/>
+                    <TextBlock Text="إدارة تغذية الصندوق وصرف الفواتير ومراجعة الرصيد" Margin="0,3,0,0" Foreground="{StaticResource MutedBrush}"/>
+                </StackPanel>
 
-            <TextBlock Text="الرصيد الافتتاحي:" VerticalAlignment="Center" FontWeight="Bold" FontSize="16" Margin="0,0,5,0"/>
-            <TextBox x:Name="OpeningBalanceTextBox" Width="90" FontSize="16" Text="0"
-                     KeyDown="OpeningBalanceTextBox_KeyDown" TextAlignment="Center"
-                     ToolTip="رصيد الصندوق في بداية السنة المالية المختارة"/>
-            <Button Content="تحديث" Width="80" Height="30" FontSize="14" Click="UpdateOpeningBalance_Click"/>
-        </StackPanel>
+                <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                    <TextBlock Text="السنة المالية" Style="{StaticResource LabelStyle}"/>
+                    <ComboBox x:Name="YearComboBox" Width="105" Style="{StaticResource FieldComboBoxStyle}" SelectionChanged="YearComboBox_SelectionChanged"/>
+                </StackPanel>
 
-        <!-- البحث -->
-        <StackPanel Grid.Row="1" Orientation="Horizontal" HorizontalAlignment="Center" Margin="0 0 0 20">
-            <TextBlock Text="بحث بالبيان:" VerticalAlignment="Center" FontWeight="Bold" Margin="0 0 5 0"/>
-            <TextBox x:Name="SearchTextBox" Width="200" TextAlignment="Center" KeyDown="MoveFocusOnEnter"/>
-            <TextBlock Text="من تاريخ:" VerticalAlignment="Center" FontWeight="Bold" Margin="0 0 5 0"/>
-            <TextBox x:Name="FromDateTextBox" Width="100" TextAlignment="Center" KeyDown="DateInput_KeyDown"/>
-            <TextBlock Text="إلى تاريخ:" VerticalAlignment="Center" FontWeight="Bold" Margin="0 0 5 0"/>
-            <TextBox x:Name="ToDateTextBox" Width="100" TextAlignment="Center" KeyDown="DateInput_KeyDown"/>
-            <Button Content="بحث" Width="81" Height="30" Click="Search_Click" FontSize="14"/>
-            <Button Content="إظهار الكل" Width="90" Height="30" Click="ShowAll_Click" FontSize="14"/>
-            <Button Content="طباعة" Width="80" Height="30" Click="Print_Click" FontSize="14" Background="#2F855A" Margin="20,5,5,5"/>
-        </StackPanel>
+                <Border Grid.Column="3" Background="#ECFDF5" BorderBrush="#A7F3D0" BorderThickness="1" CornerRadius="9" Padding="15,8" MinWidth="150" VerticalAlignment="Center">
+                    <StackPanel>
+                        <TextBlock Text="رصيد الصندوق" Foreground="#047857" FontWeight="SemiBold" HorizontalAlignment="Center"/>
+                        <TextBlock x:Name="InvoicesBalanceText" Text="0.000" FontSize="22" FontWeight="Bold" Foreground="#065F46" HorizontalAlignment="Center" Margin="0,3,0,0"/>
+                    </StackPanel>
+                </Border>
 
-        <!-- إضافة حركة صندوق -->
-        <StackPanel Grid.Row="2" Orientation="Horizontal" HorizontalAlignment="Center" Margin="0 0 0 20">
-            <TextBlock Text="التاريخ:" VerticalAlignment="Center" FontWeight="Bold" Margin="0 0 5 0"/>
-            <TextBox x:Name="InvoiceDateTextBox" Width="91" KeyDown="InvoiceDate_KeyDown" TextAlignment="Center"/>
+                <Border Grid.Column="5" Background="#F8FAFC" BorderBrush="{StaticResource BorderBrush}" BorderThickness="1" CornerRadius="9" Padding="12,8" VerticalAlignment="Center">
+                    <StackPanel>
+                        <TextBlock Text="الرصيد الافتتاحي" Foreground="#475569" FontWeight="SemiBold" HorizontalAlignment="Center"/>
+                        <StackPanel Orientation="Horizontal" Margin="0,5,0,0">
+                            <TextBox x:Name="OpeningBalanceTextBox" Width="95" Height="34" Text="0" TextAlignment="Center" VerticalContentAlignment="Center"
+                                     KeyDown="OpeningBalanceTextBox_KeyDown" ToolTip="رصيد الصندوق في بداية السنة المالية المختارة"/>
+                            <Button Content="تحديث" Style="{StaticResource PrimaryButtonStyle}" Width="72" Height="34" MinHeight="34" Margin="5,0,0,0" Click="UpdateOpeningBalance_Click"/>
+                        </StackPanel>
+                    </StackPanel>
+                </Border>
+            </Grid>
+        </Border>
 
-            <TextBlock Text="رقم المرجع:" VerticalAlignment="Center" FontWeight="Bold" Margin="0 0 5 0"/>
-            <TextBox x:Name="InvoiceNoTextBox" Width="95" KeyDown="MoveFocusOnEnter"
-                     HorizontalAlignment="Center" VerticalAlignment="Center" TextAlignment="Center"
-                     ToolTip="رقم الفاتورة أو الشيك أو أي رقم مرجعي للحركة"/>
+        <!-- مساحة العمل -->
+        <Grid Grid.Row="2" FlowDirection="LeftToRight">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*" MinWidth="620"/>
+                <ColumnDefinition Width="14"/>
+                <ColumnDefinition Width="355"/>
+            </Grid.ColumnDefinitions>
 
-            <TextBlock Text="البيان:" VerticalAlignment="Center" FontWeight="Bold" Margin="0 0 5 0"/>
-            <TextBox x:Name="DescriptionTextBox" Width="220" KeyDown="MoveFocusOnEnter" TextAlignment="Center"/>
+            <!-- البحث والجدول -->
+            <Grid Grid.Column="0" FlowDirection="RightToLeft">
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="12"/>
+                    <RowDefinition Height="*"/>
+                </Grid.RowDefinitions>
 
-            <TextBlock Text="تغذية الصندوق:" VerticalAlignment="Center" FontWeight="Bold" Margin="0 0 5 0"/>
-            <TextBox x:Name="DebitTextBox" Width="80" KeyDown="MoveFocusOnEnter" TextAlignment="Center"
-                     ToolTip="المبلغ الذي تمت إضافته للصندوق مثل تحصيل شيك النثرية أو التحويل"/>
+                <Border Grid.Row="0" Style="{StaticResource CardStyle}">
+                    <StackPanel>
+                        <DockPanel Margin="0,0,0,10">
+                            <StackPanel DockPanel.Dock="Right">
+                                <TextBlock Text="بحث وحركة الصندوق" FontSize="18" FontWeight="Bold" Foreground="{StaticResource TextBrush}"/>
+                                <TextBlock Text="يمكن البحث بالبيان أو تحديد فترة زمنية" Foreground="{StaticResource MutedBrush}" Margin="0,2,0,0"/>
+                            </StackPanel>
+                            <Button Content="طباعة" Style="{StaticResource SuccessButtonStyle}" Width="88" Height="36" DockPanel.Dock="Left" Margin="0" Click="Print_Click"/>
+                        </DockPanel>
 
-            <TextBlock Text="صرف فاتورة:" VerticalAlignment="Center" FontWeight="Bold" Margin="0 0 5 0"/>
-            <TextBox x:Name="CreditTextBox" Width="80" KeyDown="CreditTextBox_KeyDown"
-                     HorizontalAlignment="Center" VerticalAlignment="Center" TextAlignment="Center"
-                     ToolTip="المبلغ الذي تم صرفه من الصندوق بموجب فاتورة"/>
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="2*"/>
+                                <ColumnDefinition Width="112"/>
+                                <ColumnDefinition Width="112"/>
+                                <ColumnDefinition Width="Auto"/>
+                            </Grid.ColumnDefinitions>
 
-            <Button x:Name="AddUpdateButton" Content="إضافة حركة" Width="105" Height="30"
-                    Click="AddUpdateInvoice_Click" FontSize="14"/>
-            <Button x:Name="CancelEditButton" Content="إلغاء التعديل" Width="120" Height="30"
-                    Click="CancelEdit_Click" Visibility="Collapsed" Background="#A0AEC0"/>
-        </StackPanel>
+                            <StackPanel Grid.Column="0" Margin="0,0,8,0">
+                                <TextBlock Text="بحث بالبيان" Style="{StaticResource LabelStyle}"/>
+                                <TextBox x:Name="SearchTextBox" Style="{StaticResource FieldTextBoxStyle}" Margin="0" KeyDown="MoveFocusOnEnter"/>
+                            </StackPanel>
+                            <StackPanel Grid.Column="1" Margin="0,0,8,0">
+                                <TextBlock Text="من تاريخ" Style="{StaticResource LabelStyle}"/>
+                                <TextBox x:Name="FromDateTextBox" Style="{StaticResource FieldTextBoxStyle}" Margin="0" TextAlignment="Center" KeyDown="DateInput_KeyDown"/>
+                            </StackPanel>
+                            <StackPanel Grid.Column="2" Margin="0,0,8,0">
+                                <TextBlock Text="إلى تاريخ" Style="{StaticResource LabelStyle}"/>
+                                <TextBox x:Name="ToDateTextBox" Style="{StaticResource FieldTextBoxStyle}" Margin="0" TextAlignment="Center" KeyDown="DateInput_KeyDown"/>
+                            </StackPanel>
+                            <StackPanel Grid.Column="3" Orientation="Horizontal" VerticalAlignment="Bottom">
+                                <Button Content="بحث" Style="{StaticResource PrimaryButtonStyle}" Width="72" Margin="0,0,4,0" Click="Search_Click"/>
+                                <Button Content="إظهار الكل" Style="{StaticResource WarningButtonStyle}" Width="92" Margin="0" Click="ShowAll_Click"/>
+                            </StackPanel>
+                        </Grid>
+                    </StackPanel>
+                </Border>
 
-        <DataGrid x:Name="InvoicesDataGrid" Grid.Row="3" AutoGenerateColumns="False" CanUserAddRows="False"
-                  FontSize="14" AlternatingRowBackground="#EDF2F7" RowBackground="White"
-                  SelectionMode="Single" SelectionUnit="FullRow" IsReadOnly="True"
-                  HorizontalAlignment="Stretch" VerticalAlignment="Stretch">
-            <DataGrid.Columns>
-                <DataGridTextColumn Header="م" Binding="{Binding Id}" Width="60" ElementStyle="{StaticResource CenteredCellStyle}"/>
-                <DataGridTextColumn Header="التاريخ" Binding="{Binding Date, StringFormat={x:Static local:AppSettings.DateFormat}}" Width="1.4*" ElementStyle="{StaticResource CenteredCellStyle}"/>
-                <DataGridTextColumn Header="المرجع" Binding="{Binding InvoiceNo}" Width="1.1*" ElementStyle="{StaticResource CenteredCellStyle}"/>
-                <DataGridTextColumn Header="البيان" Binding="{Binding Description}" Width="3*" ElementStyle="{StaticResource CenteredCellStyle}"/>
-                <DataGridTextColumn Header="تغذية الصندوق" Binding="{Binding Debit, Converter={StaticResource ZeroToEmptyStringConverter}}" Width="1.3*" ElementStyle="{StaticResource CenteredCellStyle}"/>
-                <DataGridTextColumn Header="صرف فاتورة" Binding="{Binding Credit, Converter={StaticResource ZeroToEmptyStringConverter}}" Width="1.3*" ElementStyle="{StaticResource CenteredCellStyle}"/>
-                <DataGridTextColumn Header="الرصيد" Binding="{Binding Balance, StringFormat=N3}" Width="1.4*" ElementStyle="{StaticResource CenteredCellStyle}"/>
-            </DataGrid.Columns>
-        </DataGrid>
+                <Border Grid.Row="2" Style="{StaticResource CardStyle}" Padding="10">
+                    <Grid>
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="8"/>
+                            <RowDefinition Height="*"/>
+                            <RowDefinition Height="Auto"/>
+                        </Grid.RowDefinitions>
 
-        <StackPanel Grid.Row="4" Orientation="Horizontal" HorizontalAlignment="Center" Margin="0 10 0 0">
-            <Button Content="تعديل الحركة" Width="105" Height="35" Background="#DD6B20" Click="EditInvoice_Click" FontSize="14"/>
-            <Button Content="حذف الحركة" Width="100" Height="35" Background="#E53E3E" Click="DeleteInvoice_Click" FontSize="14"/>
-        </StackPanel>
+                        <DockPanel Grid.Row="0">
+                            <TextBlock Text="الحركات - الأحدث أولًا" FontSize="16" FontWeight="Bold" Foreground="{StaticResource TextBrush}" DockPanel.Dock="Right"/>
+                            <TextBlock Text="حدد سجلًا للتعديل أو الحذف" Foreground="{StaticResource MutedBrush}" DockPanel.Dock="Left"/>
+                        </DockPanel>
+
+                        <DataGrid x:Name="InvoicesDataGrid" Grid.Row="2" AutoGenerateColumns="False">
+                            <DataGrid.Columns>
+                                <DataGridTextColumn Header="م" Binding="{Binding Id}" Width="55" ElementStyle="{StaticResource CenteredCellStyle}"/>
+                                <DataGridTextColumn Header="التاريخ" Binding="{Binding Date, StringFormat={x:Static local:AppSettings.DateFormat}}" Width="95" ElementStyle="{StaticResource CenteredCellStyle}"/>
+                                <DataGridTextColumn Header="المرجع" Binding="{Binding InvoiceNo}" Width="90" ElementStyle="{StaticResource CenteredCellStyle}"/>
+                                <DataGridTextColumn Header="البيان" Binding="{Binding Description}" Width="2.3*" ElementStyle="{StaticResource CenteredCellStyle}"/>
+                                <DataGridTextColumn Header="تغذية" Binding="{Binding Debit, Converter={StaticResource ZeroToEmptyStringConverter}}" Width="90" ElementStyle="{StaticResource CenteredCellStyle}"/>
+                                <DataGridTextColumn Header="صرف فاتورة" Binding="{Binding Credit, Converter={StaticResource ZeroToEmptyStringConverter}}" Width="95" ElementStyle="{StaticResource CenteredCellStyle}"/>
+                                <DataGridTextColumn Header="الرصيد" Binding="{Binding Balance, StringFormat=N3}" Width="100" ElementStyle="{StaticResource CenteredCellStyle}"/>
+                            </DataGrid.Columns>
+                        </DataGrid>
+
+                        <StackPanel Grid.Row="3" Orientation="Horizontal" HorizontalAlignment="Center" Margin="0,10,0,0">
+                            <Button Content="تعديل الحركة" Style="{StaticResource WarningButtonStyle}" Width="105" Click="EditInvoice_Click"/>
+                            <Button Content="حذف الحركة" Style="{StaticResource DangerButtonStyle}" Width="100" Click="DeleteInvoice_Click"/>
+                        </StackPanel>
+                    </Grid>
+                </Border>
+            </Grid>
+
+            <!-- الإدخال الثابت -->
+            <Border Grid.Column="2" Style="{StaticResource CardStyle}" FlowDirection="RightToLeft" Padding="18">
+                <Grid>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="10"/>
+                        <RowDefinition Height="*"/>
+                    </Grid.RowDefinitions>
+
+                    <StackPanel Grid.Row="0">
+                        <TextBlock Text="إضافة حركة صندوق" FontSize="20" FontWeight="Bold" Foreground="{StaticResource PrimaryBrush}"/>
+                        <TextBlock Text="أدخل تغذية الصندوق أو صرف الفاتورة فقط" Foreground="{StaticResource MutedBrush}" Margin="0,4,0,0" TextWrapping="Wrap"/>
+                    </StackPanel>
+
+                    <ScrollViewer Grid.Row="2" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+                        <StackPanel Margin="0,2,4,4">
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="10"/>
+                                    <ColumnDefinition Width="*"/>
+                                </Grid.ColumnDefinitions>
+                                <StackPanel Grid.Column="0">
+                                    <TextBlock Text="التاريخ" Style="{StaticResource LabelStyle}"/>
+                                    <TextBox x:Name="InvoiceDateTextBox" Style="{StaticResource FieldTextBoxStyle}" TextAlignment="Center" KeyDown="InvoiceDate_KeyDown"/>
+                                </StackPanel>
+                                <StackPanel Grid.Column="2">
+                                    <TextBlock Text="رقم المرجع" Style="{StaticResource LabelStyle}"/>
+                                    <TextBox x:Name="InvoiceNoTextBox" Style="{StaticResource FieldTextBoxStyle}" TextAlignment="Center" KeyDown="MoveFocusOnEnter"
+                                             ToolTip="رقم الفاتورة أو الشيك أو أي رقم مرجعي للحركة"/>
+                                </StackPanel>
+                            </Grid>
+
+                            <TextBlock Text="البيان" Style="{StaticResource LabelStyle}"/>
+                            <TextBox x:Name="DescriptionTextBox" Style="{StaticResource FieldTextBoxStyle}" KeyDown="MoveFocusOnEnter"/>
+
+                            <Border Background="#EFF6FF" BorderBrush="#BFDBFE" BorderThickness="1" CornerRadius="8" Padding="10" Margin="0,2,0,10">
+                                <TextBlock Text="الحركة الواحدة تكون إما تغذية للصندوق أو صرف فاتورة، وليس الاثنين معًا." Foreground="#1E40AF" TextWrapping="Wrap"/>
+                            </Border>
+
+                            <TextBlock Text="تغذية الصندوق" Style="{StaticResource LabelStyle}"/>
+                            <TextBox x:Name="DebitTextBox" Style="{StaticResource FieldTextBoxStyle}" TextAlignment="Center" KeyDown="MoveFocusOnEnter"
+                                     ToolTip="المبلغ الذي تمت إضافته للصندوق مثل تحصيل شيك النثرية أو التحويل"/>
+
+                            <TextBlock Text="صرف فاتورة" Style="{StaticResource LabelStyle}"/>
+                            <TextBox x:Name="CreditTextBox" Style="{StaticResource FieldTextBoxStyle}" TextAlignment="Center" KeyDown="CreditTextBox_KeyDown"
+                                     ToolTip="المبلغ الذي تم صرفه من الصندوق بموجب فاتورة"/>
+
+                            <Button x:Name="AddUpdateButton" Content="إضافة حركة" Style="{StaticResource SuccessButtonStyle}" Height="43" Margin="0,4,0,6" Click="AddUpdateInvoice_Click"/>
+                            <Button x:Name="CancelEditButton" Content="إلغاء التعديل" Style="{StaticResource WarningButtonStyle}" Height="38" Margin="0" Click="CancelEdit_Click" Visibility="Collapsed"/>
+
+                            <TextBlock Text="استخدم Enter للتنقل، ومن حقل صرف الفاتورة يتم الحفظ مباشرة." Foreground="{StaticResource MutedBrush}" TextWrapping="Wrap" Margin="0,12,0,0"/>
+                        </StackPanel>
+                    </ScrollViewer>
+                </Grid>
+            </Border>
+        </Grid>
     </Grid>
 </UserControl>
