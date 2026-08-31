@@ -1,20 +1,20 @@
-﻿using System;
+using System;
 
 namespace AccountingApp
 {
     public class AidEntry
     {
         public int Id { get; set; }
-        public string ProjectName { get; set; } // اسم المشروع (طرود غذائية, ملابس, ...)
-        public string DonorName { get; set; }   // اسم المتبرع
+        public string ProjectName { get; set; }
+        public string VoucherNo { get; set; }
+        public string DonorName { get; set; }
         public DateTime Date { get; set; }
         public decimal Amount { get; set; }
-        public int Quantity { get; set; }       // العدد (طرود, أسر, وجبات, ...)
-        public string DonationType { get; set; } // نوع التبرع (خاص بمعونة الشتاء والطرود)
+        public int Quantity { get; set; }
+        public string DonationType { get; set; }
         public int Year { get; set; }
     }
 
-    // هذا الكلاس الصغير سيستخدم لعرض ملخص المشاريع في الجدول العلوي
     public class ProjectSummary
     {
         public string ProjectName { get; set; }
