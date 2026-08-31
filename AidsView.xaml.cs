@@ -3,395 +3,613 @@ using System;
 using System.Collections.Generic;
 using System.Globalization;
 using System.Linq;
-using System.Printing;
 using System.Text;
 using System.Windows;
 using System.Windows.Controls;
-using System.Windows.Data;
 using System.Windows.Documents;
 using System.Windows.Input;
 using System.Windows.Media;
+using System.Windows.Threading;
 
 namespace AccountingApp
 {
     public partial class AidsView : UserControl
     {
         private readonly string _connectionString = DatabaseService.ConnectionString;
+        private readonly DispatcherTimer _searchTimer;
         private AidEntry _aidToEdit;
-        private TextBox _voucherNoTextBox;
-        private TextBox _searchVoucherNoTextBox;
+        private bool _suppressEvents;
 
         private readonly List<string> _projectNames = new List<string>
         {
-            "الطرود الغذائية", "الملابس والأحذية", "معونة الشتاء", "الحقيبة المدرسية", "كسوة العيد", "إفطار صائم", "الأضاحي",
-            "أثاث منازل للفقراء", "مواد مستهلكة للفقراء", "نذور وكفارات", "أصول ثابتة", "مواد مستهلكة للمركز", "أدوية ومستلزمات طبية"
+            "الطرود الغذائية",
+            "الملابس والأحذية",
+            "معونة الشتاء",
+            "الحقيبة المدرسية",
+            "كسوة العيد",
+            "إفطار صائم",
+            "الأضاحي",
+            "أثاث منازل للفقراء",
+            "مواد مستهلكة للفقراء",
+            "نذور وكفارات",
+            "أصول ثابتة",
+            "مواد مستهلكة للمركز",
+            "أدوية ومستلزمات طبية"
         };
 
-        private class AidFieldSet
+        private sealed class AidProjectConfig
         {
-            public TextBox Date { get; set; }
-            public TextBox Donor { get; set; }
-            public TextBox Type { get; set; }
-            public TextBox Quantity { get; set; }
-            public TextBox Amount { get; set; }
-            public Button SubmitButton { get; set; }
+            public string Name { get; set; }
+            public string QuantityLabel { get; set; }
+            public string TypeLabel { get; set; }
+            public bool ShowType { get; set; }
+            public bool TypeMustBePositiveInteger { get; set; }
+            public string Hint { get; set; }
         }
+
+        private readonly Dictionary<string, AidProjectConfig> _projectConfigs;
 
         public AidsView()
         {
             InitializeComponent();
             DatabaseService.InitializeDatabase();
-            InitializeVoucherUi();
 
-            for (int i = 0; i < _projectNames.Count && i < AidEntryTabControl.Items.Count; i++)
-            {
-                ((TabItem)AidEntryTabControl.Items[i]).Header = _projectNames[i];
-            }
+            _projectConfigs = BuildProjectConfigs();
+            _searchTimer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(280) };
+            _searchTimer.Tick += SearchTimer_Tick;
 
             PopulateComboBoxes();
         }
 
-        private void InitializeVoucherUi()
+        private Dictionary<string, AidProjectConfig> BuildProjectConfigs()
         {
-            InitializeVoucherEntryUi();
-            InitializeVoucherSearchUi();
-
-            if (!AidsDataGrid.Columns.Any(c => string.Equals(c.Header?.ToString(), "رقم السند", StringComparison.Ordinal)))
+            var configs = new List<AidProjectConfig>
             {
-                AidsDataGrid.Columns.Insert(1, new DataGridTextColumn
-                {
-                    Header = "رقم السند",
-                    Binding = new Binding(nameof(AidEntry.VoucherNo)),
-                    Width = new DataGridLength(110)
-                });
-            }
+                NewConfig("الطرود الغذائية", "عدد الطرود", "نوع التبرع", true, false, "أدخل نوع التبرع وعدد الطرود والمبلغ إن وجد."),
+                NewConfig("الملابس والأحذية", "عدد الأسر", null, false, false, "أدخل عدد الأسر والمبلغ إن وجد."),
+                NewConfig("معونة الشتاء", "عدد الأسر", "نوع التبرع", true, false, "مثال: بطانيات، مدافئ، وقود أو ملابس شتوية."),
+                NewConfig("الحقيبة المدرسية", "عدد الحقائب", "عدد الأسر", true, true, "أدخل عدد الحقائب وعدد الأسر المستفيدة."),
+                NewConfig("كسوة العيد", "عدد الأسر", null, false, false, "أدخل عدد الأسر المستفيدة والمبلغ إن وجد."),
+                NewConfig("إفطار صائم", "عدد الوجبات", "عدد الأسر", true, true, "أدخل عدد الوجبات وعدد الأسر المستفيدة."),
+                NewConfig("الأضاحي", "عدد الأسر", null, false, false, "أدخل عدد الأسر المستفيدة والمبلغ إن وجد."),
+                NewConfig("أثاث منازل للفقراء", "عدد القطع", "البيان", true, false, "في البيان اكتب نوع الأثاث أو وصفه."),
+                NewConfig("مواد مستهلكة للفقراء", "الكمية", "البيان", true, false, "في البيان اكتب نوع المواد المصروفة."),
+                NewConfig("نذور وكفارات", "العدد", "البيان", true, false, "في البيان اكتب وصف النذر أو الكفارة عند الحاجة."),
+                NewConfig("أصول ثابتة", "العدد", "البيان", true, false, "في البيان اكتب وصف الأصل الثابت."),
+                NewConfig("مواد مستهلكة للمركز", "الكمية", "البيان", true, false, "في البيان اكتب نوع المواد المستخدمة للمركز."),
+                NewConfig("أدوية ومستلزمات طبية", "الكمية", "البيان", true, false, "في البيان اكتب اسم الدواء أو المستلزم الطبي.")
+            };
+
+            return configs.ToDictionary(c => c.Name, StringComparer.Ordinal);
         }
 
-        private void InitializeVoucherEntryUi()
+        private static AidProjectConfig NewConfig(
+            string name,
+            string quantityLabel,
+            string typeLabel,
+            bool showType,
+            bool typeMustBePositiveInteger,
+            string hint)
         {
-            var groupBox = AidEntryTabControl.Parent as GroupBox;
-            if (groupBox == null) return;
-
-            groupBox.Content = null;
-
-            var wrapper = new StackPanel();
-            var voucherRow = new Border
+            return new AidProjectConfig
             {
-                Background = new SolidColorBrush(Color.FromRgb(247, 250, 252)),
-                BorderBrush = new SolidColorBrush(Color.FromRgb(203, 213, 224)),
-                BorderThickness = new Thickness(1),
-                CornerRadius = new CornerRadius(6),
-                Padding = new Thickness(12, 8, 12, 8),
-                Margin = new Thickness(5, 5, 5, 10)
+                Name = name,
+                QuantityLabel = quantityLabel,
+                TypeLabel = typeLabel,
+                ShowType = showType,
+                TypeMustBePositiveInteger = typeMustBePositiveInteger,
+                Hint = hint
             };
-
-            var row = new StackPanel { Orientation = Orientation.Horizontal };
-            row.Children.Add(new TextBlock
-            {
-                Text = "رقم السند:",
-                FontWeight = FontWeights.SemiBold,
-                VerticalAlignment = VerticalAlignment.Center,
-                Margin = new Thickness(0, 0, 10, 0)
-            });
-
-            _voucherNoTextBox = new TextBox
-            {
-                Width = 180,
-                Height = 28,
-                VerticalContentAlignment = VerticalAlignment.Center
-            };
-            _voucherNoTextBox.KeyDown += MoveFocusOnEnter;
-            row.Children.Add(_voucherNoTextBox);
-            row.Children.Add(new TextBlock
-            {
-                Text = "  مطلوب لكل إدخال جديد",
-                Foreground = Brushes.DimGray,
-                VerticalAlignment = VerticalAlignment.Center
-            });
-
-            voucherRow.Child = row;
-            wrapper.Children.Add(voucherRow);
-            wrapper.Children.Add(AidEntryTabControl);
-            groupBox.Content = wrapper;
-        }
-
-        private void InitializeVoucherSearchUi()
-        {
-            var searchGrid = SearchProjectComboBox.Parent as Grid;
-            var groupBox = searchGrid?.Parent as GroupBox;
-            if (searchGrid == null || groupBox == null) return;
-
-            groupBox.Content = null;
-            var wrapper = new StackPanel();
-            wrapper.Children.Add(searchGrid);
-
-            var row = new StackPanel
-            {
-                Orientation = Orientation.Horizontal,
-                Margin = new Thickness(0, 8, 0, 0)
-            };
-            row.Children.Add(new TextBlock
-            {
-                Text = "رقم السند:",
-                FontWeight = FontWeights.SemiBold,
-                VerticalAlignment = VerticalAlignment.Center,
-                Margin = new Thickness(0, 0, 10, 0)
-            });
-
-            _searchVoucherNoTextBox = new TextBox
-            {
-                Width = 180,
-                Height = 28,
-                VerticalContentAlignment = VerticalAlignment.Center
-            };
-            _searchVoucherNoTextBox.KeyDown += MoveFocusOnEnter;
-            row.Children.Add(_searchVoucherNoTextBox);
-            row.Children.Add(new TextBlock
-            {
-                Text = "  يمكن كتابة جزء من رقم السند ثم الضغط على بحث",
-                Foreground = Brushes.DimGray,
-                VerticalAlignment = VerticalAlignment.Center
-            });
-
-            wrapper.Children.Add(row);
-            groupBox.Content = wrapper;
         }
 
         private void PopulateComboBoxes()
         {
-            FiscalYearHelper.SelectCurrentYear(YearComboBox);
-            var searchProjects = new List<string> { "جميع المشاريع" };
-            searchProjects.AddRange(_projectNames);
-            SearchProjectComboBox.ItemsSource = searchProjects;
-            SearchProjectComboBox.SelectedItem = "جميع المشاريع";
+            _suppressEvents = true;
+            try
+            {
+                FiscalYearHelper.SelectCurrentYear(YearComboBox);
+
+                EntryProjectComboBox.ItemsSource = _projectNames;
+                EntryProjectComboBox.SelectedIndex = 0;
+
+                var searchProjects = new List<string> { "جميع المشاريع" };
+                searchProjects.AddRange(_projectNames);
+                SearchProjectComboBox.ItemsSource = searchProjects;
+                SearchProjectComboBox.SelectedIndex = 0;
+            }
+            finally
+            {
+                _suppressEvents = false;
+            }
         }
 
-        #region Event Handlers
         private void AidsView_Loaded(object sender, RoutedEventArgs e)
         {
-            FiscalYearHelper.SelectCurrentYear(YearComboBox);
-            ResetDateFieldsToSelectedYear();
-            RefreshSummaryGrid(false);
-            LoadDetailsForCurrentProject();
+            _suppressEvents = true;
+            try
+            {
+                FiscalYearHelper.SelectCurrentYear(YearComboBox);
+                if (EntryProjectComboBox.SelectedItem == null) EntryProjectComboBox.SelectedIndex = 0;
+                if (SearchProjectComboBox.SelectedItem == null) SearchProjectComboBox.SelectedIndex = 0;
+                ResetSearchDateRange();
+                SetDefaultEntryDate();
+            }
+            finally
+            {
+                _suppressEvents = false;
+            }
+
+            ApplyProjectConfiguration();
+            RefreshAll(false);
+            VoucherNoTextBox.Focus();
         }
 
         private void YearComboBox_SelectionChanged(object sender, SelectionChangedEventArgs e)
         {
-            if (!IsLoaded) return;
+            if (_suppressEvents || !IsLoaded || YearComboBox.SelectedItem == null) return;
 
-            CancelCurrentEditAndClear();
-            ResetDateFieldsToSelectedYear();
-            RefreshSummaryGrid(false);
-            LoadDetailsForCurrentProject();
+            ExitEditMode();
+            ClearEntryFields(false);
+            ResetSearchDateRange();
+            SetDefaultEntryDate();
+            RefreshAll(false);
+            SetEntryStatus("تم تغيير السنة المالية. كل النتائج والإدخالات الآن تخص السنة المختارة.", false);
+        }
+
+        private void EntryProjectComboBox_SelectionChanged(object sender, SelectionChangedEventArgs e)
+        {
+            if (_suppressEvents || EntryProjectComboBox.SelectedItem == null) return;
+
+            if (_aidToEdit != null &&
+                !string.Equals(_aidToEdit.ProjectName, EntryProjectComboBox.SelectedItem.ToString(), StringComparison.Ordinal))
+            {
+                ExitEditMode();
+                ClearEntryFields(true);
+                SetEntryStatus("تم إلغاء وضع التعديل لأنك غيرت نوع المساعدة.", false);
+            }
+
+            ApplyProjectConfiguration();
+            RefreshRecentEntries();
+            if (IsLoaded) VoucherNoTextBox.Focus();
+        }
+
+        private void SearchProjectComboBox_SelectionChanged(object sender, SelectionChangedEventArgs e)
+        {
+            if (_suppressEvents || !IsLoaded) return;
+            UpdateSearchResultColumns();
+            RefreshSearchResults(false);
+        }
+
+        private void QuickSearchTextBox_TextChanged(object sender, TextChangedEventArgs e)
+        {
+            if (_suppressEvents || !IsLoaded) return;
+            _searchTimer.Stop();
+            _searchTimer.Start();
+        }
+
+        private void SearchTimer_Tick(object sender, EventArgs e)
+        {
+            _searchTimer.Stop();
+            RefreshSearchResults(false);
         }
 
         private void Search_Click(object sender, RoutedEventArgs e)
         {
-            RefreshSummaryGrid(true);
+            RefreshSearchResults(true);
         }
 
-        private void ShowAll_Click(object sender, RoutedEventArgs e)
+        private void ClearSearch_Click(object sender, RoutedEventArgs e)
         {
-            SearchProjectComboBox.SelectedItem = "جميع المشاريع";
-            _searchVoucherNoTextBox?.Clear();
-            ResetDateFieldsToSelectedYear();
-            RefreshSummaryGrid(false);
+            _suppressEvents = true;
+            try
+            {
+                QuickSearchTextBox.Clear();
+                SearchProjectComboBox.SelectedIndex = 0;
+                ResetSearchDateRange();
+            }
+            finally
+            {
+                _suppressEvents = false;
+            }
+
+            UpdateSearchResultColumns();
+            RefreshSearchResults(false);
+            QuickSearchTextBox.Focus();
         }
 
-        private void ProjectsSummaryDataGrid_SelectionChanged(object sender, SelectionChangedEventArgs e)
+        private void SaveAid_Click(object sender, RoutedEventArgs e)
         {
-            if (!(ProjectsSummaryDataGrid.SelectedItem is ProjectSummary selectedProject))
-            {
-                AidsDataGrid.ItemsSource = null;
-                UpdateDetailsColumns(null);
-                return;
-            }
-
-            foreach (TabItem tab in AidEntryTabControl.Items)
-            {
-                if (string.Equals(tab.Header?.ToString(), selectedProject.ProjectName, StringComparison.Ordinal))
-                {
-                    AidEntryTabControl.SelectedItem = tab;
-                    break;
-                }
-            }
-
-            if (SearchProjectComboBox != null)
-            {
-                SearchProjectComboBox.SelectedItem = selectedProject.ProjectName;
-            }
-
-            if (!TryGetSearchDateRange(false, out DateTime? fromDate, out DateTime? toDate)) return;
-            AidsDataGrid.ItemsSource = LoadAidDetails(selectedProject.ProjectName, GetVoucherSearchText(), fromDate, toDate);
-            UpdateDetailsColumns(selectedProject.ProjectName);
+            SaveCurrentEntry();
         }
 
-        private void LoadDetailsForCurrentProject()
+        private void SaveCurrentEntry()
         {
-            if (!(AidEntryTabControl.SelectedItem is TabItem selectedTab)) return;
-            string projectName = selectedTab.Header?.ToString();
-            if (string.IsNullOrWhiteSpace(projectName)) return;
-
-            if (!TryGetSearchDateRange(false, out DateTime? fromDate, out DateTime? toDate)) return;
-            AidsDataGrid.ItemsSource = LoadAidDetails(projectName, GetVoucherSearchText(), fromDate, toDate);
-            UpdateDetailsColumns(projectName);
-        }
-
-        private void AidEntryTabControl_SelectionChanged(object sender, SelectionChangedEventArgs e)
-        {
-            if (!IsLoaded || !(AidEntryTabControl.SelectedItem is TabItem selectedTab)) return;
-            string projectName = selectedTab.Header?.ToString();
-
-            if (_aidToEdit != null && !string.Equals(_aidToEdit.ProjectName, projectName, StringComparison.Ordinal))
-            {
-                string oldProject = _aidToEdit.ProjectName;
-                ExitEditMode();
-                ClearProjectFields(oldProject);
-                _voucherNoTextBox?.Clear();
-            }
-
-            var summaryItem = ProjectsSummaryDataGrid.Items
-                .OfType<ProjectSummary>()
-                .FirstOrDefault(p => p.ProjectName == projectName);
-
-            if (summaryItem != null)
-            {
-                ProjectsSummaryDataGrid.SelectedItem = summaryItem;
-            }
-            else
-            {
-                LoadDetailsForCurrentProject();
-            }
-
-            UpdateDetailsColumns(projectName);
-        }
-
-        private void AidsDataGrid_SelectionChanged(object sender, SelectionChangedEventArgs e)
-        {
-        }
-
-        private void AddAid_Click(object sender, RoutedEventArgs e)
-        {
-            if (!(AidEntryTabControl.SelectedItem is TabItem selectedTab)) return;
-            string projectName = selectedTab.Header?.ToString();
-            if (string.IsNullOrWhiteSpace(projectName)) return;
-
-            var entry = new AidEntry
-            {
-                ProjectName = projectName,
-                Year = FiscalYearHelper.GetSelectedYear(YearComboBox)
-            };
-
-            if (!PopulateAidEntry(entry, projectName)) return;
+            AidEntry entry;
+            if (!TryBuildEntry(out entry)) return;
             if (!FiscalYearHelper.ValidateDateInSelectedYear(entry.Date, YearComboBox, "تاريخ المساعدة")) return;
 
-            bool saved;
-            if (_aidToEdit == null)
+            int ignoredId = _aidToEdit == null ? 0 : _aidToEdit.Id;
+            AidEntry duplicate = FindDuplicateVoucher(entry.VoucherNo, entry.Year, ignoredId);
+            if (duplicate != null)
             {
-                saved = SaveAidEntry(entry);
-                if (saved)
+                string duplicateDate = duplicate.Date.ToString(AppSettings.DateFormat);
+                string message =
+                    $"رقم السند {entry.VoucherNo} موجود مسبقًا في نفس السنة المالية.\n\n" +
+                    $"المساعدة: {duplicate.ProjectName}\n" +
+                    $"التاريخ: {duplicateDate}\n" +
+                    $"المتبرع: {duplicate.DonorName}\n\n" +
+                    "هل تريد حفظ هذا السجل رغم التكرار؟";
+
+                if (MessageBox.Show(message, "تنبيه: رقم سند مكرر", MessageBoxButton.YesNo, MessageBoxImage.Warning) != MessageBoxResult.Yes)
                 {
-                    MessageBox.Show($"تمت إضافة الإدخال بنجاح.\nرقم السند: {entry.VoucherNo}", "نجاح", MessageBoxButton.OK, MessageBoxImage.Information);
+                    VoucherNoTextBox.Focus();
+                    VoucherNoTextBox.SelectAll();
+                    return;
                 }
             }
-            else
+
+            bool isEdit = _aidToEdit != null;
+            bool saved;
+            if (isEdit)
             {
                 entry.Id = _aidToEdit.Id;
                 saved = UpdateAidEntry(entry);
-                if (saved)
-                {
-                    MessageBox.Show($"تم تحديث الإدخال بنجاح.\nرقم السند: {entry.VoucherNo}", "نجاح", MessageBoxButton.OK, MessageBoxImage.Information);
-                }
+            }
+            else
+            {
+                saved = SaveAidEntry(entry);
             }
 
             if (!saved) return;
 
+            string savedVoucher = entry.VoucherNo;
+            string savedProject = entry.ProjectName;
+            string savedDate = AidDateTextBox.Text;
+
             ExitEditMode();
-            ClearProjectFields(projectName);
-            _voucherNoTextBox?.Clear();
-            RefreshSummaryGrid(false);
-            LoadDetailsForCurrentProject();
+            ClearEntryFields(true);
+            AidDateTextBox.Text = savedDate;
+
+            SetEntryStatus(
+                isEdit
+                    ? $"تم تحديث السند {savedVoucher} بنجاح."
+                    : $"تم حفظ السند {savedVoucher} بنجاح. يمكنك إدخال سند جديد لنفس نوع المساعدة.",
+                true);
+
+            RefreshSearchResults(false);
+            RefreshRecentEntries();
+
+            if (!string.Equals(EntryProjectComboBox.SelectedItem?.ToString(), savedProject, StringComparison.Ordinal))
+            {
+                _suppressEvents = true;
+                EntryProjectComboBox.SelectedItem = savedProject;
+                _suppressEvents = false;
+                ApplyProjectConfiguration();
+            }
+
+            VoucherNoTextBox.Focus();
+        }
+
+        private void CancelEdit_Click(object sender, RoutedEventArgs e)
+        {
+            ExitEditMode();
+            ClearEntryFields(true);
+            SetEntryStatus("تم إلغاء التعديل. النموذج جاهز لإضافة سجل جديد.", false);
+            VoucherNoTextBox.Focus();
         }
 
         private void EditAid_Click(object sender, RoutedEventArgs e)
         {
-            var selectedAid = (sender as FrameworkElement)?.DataContext as AidEntry;
-            if (selectedAid == null)
+            AidEntry entry = (sender as FrameworkElement)?.DataContext as AidEntry;
+            if (entry != null) BeginEdit(entry);
+        }
+
+        private void AidDataGrid_MouseDoubleClick(object sender, MouseButtonEventArgs e)
+        {
+            var grid = sender as DataGrid;
+            AidEntry entry = grid?.SelectedItem as AidEntry;
+            if (entry != null) BeginEdit(entry);
+        }
+
+        private void BeginEdit(AidEntry entry)
+        {
+            _aidToEdit = entry;
+
+            _suppressEvents = true;
+            try
             {
-                MessageBox.Show("لم يتم العثور على بيانات السجل المحدد.", "خطأ", MessageBoxButton.OK, MessageBoxImage.Error);
-                return;
+                EntryProjectComboBox.SelectedItem = entry.ProjectName;
+            }
+            finally
+            {
+                _suppressEvents = false;
             }
 
-            _aidToEdit = selectedAid;
+            ApplyProjectConfiguration();
 
-            foreach (TabItem tab in AidEntryTabControl.Items)
+            VoucherNoTextBox.Text = entry.VoucherNo ?? string.Empty;
+            AidDateTextBox.Text = entry.Date.ToString(AppSettings.DateFormat);
+            DonorNameTextBox.Text = entry.DonorName ?? string.Empty;
+            QuantityTextBox.Text = entry.Quantity == 0 ? string.Empty : entry.Quantity.ToString(CultureInfo.CurrentCulture);
+            AmountTextBox.Text = entry.Amount == 0 ? string.Empty : entry.Amount.ToString("0.###", CultureInfo.CurrentCulture);
+
+            AidProjectConfig config = GetSelectedEntryConfig();
+            if (config != null && config.ShowType)
             {
-                if (string.Equals(tab.Header?.ToString(), selectedAid.ProjectName, StringComparison.Ordinal))
+                string typeText = entry.DonationType ?? string.Empty;
+                if (config.TypeMustBePositiveInteger && typeText.StartsWith("أسر: ", StringComparison.Ordinal))
                 {
-                    AidEntryTabControl.SelectedItem = tab;
-                    break;
+                    typeText = typeText.Substring("أسر: ".Length).Trim();
                 }
+                DonationTypeTextBox.Text = typeText;
+            }
+            else
+            {
+                DonationTypeTextBox.Clear();
             }
 
-            PopulateUIForEdit(selectedAid);
-            SetButtonContent(selectedAid.ProjectName, "تحديث الإدخال");
+            EntryModeTextBlock.Text = $"تعديل مساعدة - السند {entry.VoucherNo}";
+            SaveAidButton.Content = "حفظ التعديل";
+            CancelEditButton.Visibility = Visibility.Visible;
+            SetEntryStatus("تم تحميل السجل للتعديل. غيّر المطلوب ثم اضغط حفظ التعديل.", false);
+            VoucherNoTextBox.Focus();
+            VoucherNoTextBox.SelectAll();
         }
 
         private void DeleteAid_Click(object sender, RoutedEventArgs e)
         {
-            var selectedAid = (sender as FrameworkElement)?.DataContext as AidEntry;
-            if (selectedAid == null) return;
+            AidEntry entry = (sender as FrameworkElement)?.DataContext as AidEntry;
+            if (entry == null) return;
 
-            string voucherInfo = string.IsNullOrWhiteSpace(selectedAid.VoucherNo)
-                ? string.Empty
-                : $"\nرقم السند: {selectedAid.VoucherNo}";
+            string message =
+                $"هل تريد حذف هذا السجل؟\n\n" +
+                $"رقم السند: {entry.VoucherNo}\n" +
+                $"نوع المساعدة: {entry.ProjectName}\n" +
+                $"التاريخ: {entry.Date.ToString(AppSettings.DateFormat)}\n" +
+                $"المتبرع: {entry.DonorName}";
 
-            if (MessageBox.Show(
-                $"هل أنت متأكد من رغبتك في حذف هذا السجل؟{voucherInfo}\nسيؤثر الحذف على ملخص المشروع والتقارير.",
-                "تأكيد الحذف",
-                MessageBoxButton.YesNo,
-                MessageBoxImage.Warning) != MessageBoxResult.Yes)
+            if (MessageBox.Show(message, "تأكيد الحذف", MessageBoxButton.YesNo, MessageBoxImage.Warning) != MessageBoxResult.Yes)
             {
                 return;
             }
 
-            if (!DeleteAidEntry(selectedAid.Id)) return;
+            if (!DeleteAidEntry(entry.Id)) return;
 
-            if (_aidToEdit?.Id == selectedAid.Id)
+            if (_aidToEdit != null && _aidToEdit.Id == entry.Id)
             {
-                CancelCurrentEditAndClear();
+                ExitEditMode();
+                ClearEntryFields(true);
             }
 
-            RefreshSummaryGrid(false);
-            LoadDetailsForCurrentProject();
+            SetEntryStatus($"تم حذف السند {entry.VoucherNo}.", false);
+            RefreshSearchResults(false);
+            RefreshRecentEntries();
         }
 
         private void Print_Click(object sender, RoutedEventArgs e)
         {
-            if (!TryGetSearchDateRange(true, out DateTime? fromDate, out DateTime? toDate)) return;
+            if (!RefreshSearchResults(true)) return;
 
-            string filterProject = SearchProjectComboBox.SelectedItem as string;
-            if (filterProject == "جميع المشاريع") filterProject = null;
-
-            var allEntries = LoadAllAidDetailsForPrinting(filterProject, GetVoucherSearchText(), fromDate, toDate);
-            if (!allEntries.Any())
+            var data = (AidsDataGrid.ItemsSource as IEnumerable<AidEntry>)?.ToList() ?? new List<AidEntry>();
+            if (data.Count == 0)
             {
-                MessageBox.Show("لا توجد بيانات للطباعة.");
+                MessageBox.Show("لا توجد نتائج للطباعة.", "طباعة", MessageBoxButton.OK, MessageBoxImage.Information);
                 return;
             }
 
-            PrintDialog printDialog = new PrintDialog();
-            if (printDialog.ShowDialog() == true)
+            var dialog = new PrintDialog();
+            if (dialog.ShowDialog() != true) return;
+
+            DateTime? fromDate;
+            DateTime? toDate;
+            TryGetSearchDateRange(false, out fromDate, out toDate);
+
+            FlowDocument document = CreatePrintDocument(data, fromDate, toDate);
+            document.PagePadding = new Thickness(35);
+            document.ColumnWidth = dialog.PrintableAreaWidth;
+            dialog.PrintDocument(((IDocumentPaginatorSource)document).DocumentPaginator, "تقرير المساعدات");
+        }
+
+        private void ApplyProjectConfiguration()
+        {
+            AidProjectConfig config = GetSelectedEntryConfig();
+            if (config == null) return;
+
+            QuantityLabelTextBlock.Text = config.QuantityLabel + ":";
+            DonationTypeLabelTextBlock.Text = (config.TypeLabel ?? "البيان") + ":";
+            DonationTypePanel.Visibility = config.ShowType ? Visibility.Visible : Visibility.Collapsed;
+            EntryProjectHintTextBlock.Text = config.Hint;
+            RecentTitleTextBlock.Text = "آخر 10 إدخالات - " + config.Name;
+
+            RecentQuantityColumn.Header = config.QuantityLabel;
+            RecentDonationTypeColumn.Header = config.TypeLabel ?? "البيان";
+            RecentDonationTypeColumn.Visibility = config.ShowType ? Visibility.Visible : Visibility.Collapsed;
+
+            if (!config.ShowType && _aidToEdit == null)
             {
-                FlowDocument doc = CreatePrintDocument(allEntries, filterProject, fromDate, toDate);
-                doc.PagePadding = new Thickness(40);
-                doc.ColumnWidth = printDialog.PrintableAreaWidth;
-                printDialog.PrintDocument(((IDocumentPaginatorSource)doc).DocumentPaginator, "تقرير المساعدات");
+                DonationTypeTextBox.Clear();
             }
         }
-        #endregion
 
-        #region Database Interaction
+        private AidProjectConfig GetSelectedEntryConfig()
+        {
+            string project = EntryProjectComboBox.SelectedItem?.ToString();
+            if (string.IsNullOrWhiteSpace(project)) return null;
+
+            AidProjectConfig config;
+            return _projectConfigs.TryGetValue(project, out config) ? config : null;
+        }
+
+        private void UpdateSearchResultColumns()
+        {
+            string project = SearchProjectComboBox.SelectedItem?.ToString();
+            AidProjectConfig config;
+            if (!string.IsNullOrWhiteSpace(project) &&
+                !string.Equals(project, "جميع المشاريع", StringComparison.Ordinal) &&
+                _projectConfigs.TryGetValue(project, out config))
+            {
+                QuantityColumn.Header = config.QuantityLabel;
+                DonationTypeColumn.Header = config.TypeLabel ?? "البيان";
+                DonationTypeColumn.Visibility = config.ShowType ? Visibility.Visible : Visibility.Collapsed;
+            }
+            else
+            {
+                QuantityColumn.Header = "الكمية/العدد";
+                DonationTypeColumn.Header = "البيان/النوع";
+                DonationTypeColumn.Visibility = Visibility.Visible;
+            }
+        }
+
+        private void RefreshAll(bool showDateErrors)
+        {
+            UpdateSearchResultColumns();
+            RefreshSearchResults(showDateErrors);
+            RefreshRecentEntries();
+        }
+
+        private bool RefreshSearchResults(bool showDateErrors)
+        {
+            if (YearComboBox.SelectedItem == null) return false;
+
+            DateTime? fromDate;
+            DateTime? toDate;
+            if (!TryGetSearchDateRange(showDateErrors, out fromDate, out toDate)) return false;
+
+            string project = SearchProjectComboBox.SelectedItem?.ToString();
+            if (string.Equals(project, "جميع المشاريع", StringComparison.Ordinal)) project = null;
+
+            string quick = QuickSearchTextBox.Text?.Trim();
+            int year = FiscalYearHelper.GetSelectedYear(YearComboBox);
+            List<AidEntry> entries = LoadFilteredEntries(year, project, quick, fromDate, toDate);
+
+            AidsDataGrid.ItemsSource = entries;
+
+            decimal totalAmount = entries.Sum(x => x.Amount);
+            int totalQuantity = entries.Sum(x => x.Quantity);
+            SearchSummaryTextBlock.Text =
+                $"عدد النتائج: {entries.Count:N0}    |    إجمالي المبلغ: {totalAmount:N3}    |    إجمالي الكمية/العدد: {totalQuantity:N0}";
+
+            return true;
+        }
+
+        private void RefreshRecentEntries()
+        {
+            if (YearComboBox.SelectedItem == null || EntryProjectComboBox.SelectedItem == null) return;
+
+            int year = FiscalYearHelper.GetSelectedYear(YearComboBox);
+            string project = EntryProjectComboBox.SelectedItem.ToString();
+            RecentEntriesDataGrid.ItemsSource = LoadRecentEntries(year, project, 10);
+        }
+
+        private bool TryBuildEntry(out AidEntry entry)
+        {
+            entry = null;
+
+            AidProjectConfig config = GetSelectedEntryConfig();
+            if (config == null)
+            {
+                MessageBox.Show("الرجاء اختيار نوع المساعدة.", "نوع المساعدة", MessageBoxButton.OK, MessageBoxImage.Warning);
+                return false;
+            }
+
+            string voucherNo = VoucherNoTextBox.Text?.Trim();
+            if (string.IsNullOrWhiteSpace(voucherNo))
+            {
+                MessageBox.Show("الرجاء إدخال رقم السند.", "رقم السند مطلوب", MessageBoxButton.OK, MessageBoxImage.Warning);
+                VoucherNoTextBox.Focus();
+                return false;
+            }
+
+            DateTime date;
+            if (!TryParseEntryDate(AidDateTextBox.Text, out date, true))
+            {
+                AidDateTextBox.Focus();
+                return false;
+            }
+
+            int quantity;
+            if (!TryParseNonNegativeInt(QuantityTextBox.Text, config.QuantityLabel, out quantity))
+            {
+                QuantityTextBox.Focus();
+                return false;
+            }
+
+            decimal amount;
+            if (!TryParseNonNegativeDecimal(AmountTextBox.Text, "المبلغ", out amount))
+            {
+                AmountTextBox.Focus();
+                return false;
+            }
+
+            if (quantity == 0 && amount == 0)
+            {
+                MessageBox.Show(
+                    "أدخل كمية/عدد أكبر من صفر أو مبلغًا أكبر من صفر على الأقل.",
+                    "بيانات غير مكتملة",
+                    MessageBoxButton.OK,
+                    MessageBoxImage.Warning);
+                QuantityTextBox.Focus();
+                return false;
+            }
+
+            string donationType = null;
+            if (config.ShowType)
+            {
+                donationType = DonationTypeTextBox.Text?.Trim();
+                if (config.TypeMustBePositiveInteger && !string.IsNullOrWhiteSpace(donationType))
+                {
+                    int families;
+                    if (!int.TryParse(donationType, NumberStyles.Integer, CultureInfo.CurrentCulture, out families) || families <= 0)
+                    {
+                        MessageBox.Show(config.TypeLabel + " يجب أن يكون رقمًا صحيحًا أكبر من صفر.", "قيمة غير صحيحة", MessageBoxButton.OK, MessageBoxImage.Warning);
+                        DonationTypeTextBox.Focus();
+                        return false;
+                    }
+                    donationType = "أسر: " + families.ToString(CultureInfo.CurrentCulture);
+                }
+            }
+
+            entry = new AidEntry
+            {
+                ProjectName = config.Name,
+                VoucherNo = voucherNo,
+                DonorName = DonorNameTextBox.Text?.Trim(),
+                Date = date,
+                Quantity = quantity,
+                Amount = amount,
+                DonationType = donationType,
+                Year = FiscalYearHelper.GetSelectedYear(YearComboBox)
+            };
+
+            return true;
+        }
+
+        private AidEntry FindDuplicateVoucher(string voucherNo, int year, int excludeId)
+        {
+            using (var conn = new SqliteConnection(_connectionString))
+            {
+                conn.Open();
+                using (var cmd = new SqliteCommand(@"
+SELECT Id, ProjectName, VoucherNo, DonorName, Date, Amount, Quantity, DonationType, Year
+FROM Aids
+WHERE Year = @Year
+  AND VoucherNo = @VoucherNo COLLATE NOCASE
+  AND Id <> @ExcludeId
+ORDER BY Id DESC
+LIMIT 1", conn))
+                {
+                    cmd.Parameters.AddWithValue("@Year", year);
+                    cmd.Parameters.AddWithValue("@VoucherNo", voucherNo.Trim());
+                    cmd.Parameters.AddWithValue("@ExcludeId", excludeId);
+
+                    using (var reader = cmd.ExecuteReader())
+                    {
+                        return reader.Read() ? ReadAidEntry(reader) : null;
+                    }
+                }
+            }
+        }
+
         private bool SaveAidEntry(AidEntry entry)
         {
             try
@@ -399,10 +617,9 @@ namespace AccountingApp
                 using (var conn = new SqliteConnection(_connectionString))
                 {
                     conn.Open();
-                    const string sql = @"INSERT INTO Aids
-                        (ProjectName, VoucherNo, DonorName, Date, Amount, Quantity, DonationType, Year)
-                        VALUES (@ProjectName, @VoucherNo, @DonorName, @Date, @Amount, @Quantity, @DonationType, @Year)";
-                    using (var cmd = new SqliteCommand(sql, conn))
+                    using (var cmd = new SqliteCommand(@"
+INSERT INTO Aids (ProjectName, VoucherNo, DonorName, Date, Amount, Quantity, DonationType, Year)
+VALUES (@ProjectName, @VoucherNo, @DonorName, @Date, @Amount, @Quantity, @DonationType, @Year)", conn))
                     {
                         AddAidParameters(cmd, entry, false);
                         cmd.ExecuteNonQuery();
@@ -410,9 +627,9 @@ namespace AccountingApp
                 }
                 return true;
             }
-            catch (SqliteException)
+            catch (Exception ex)
             {
-                MessageBox.Show("تعذر حفظ بيانات المساعدة في قاعدة البيانات.", "خطأ في الحفظ", MessageBoxButton.OK, MessageBoxImage.Error);
+                MessageBox.Show("تعذر حفظ بيانات المساعدة.\n" + ex.Message, "خطأ في الحفظ", MessageBoxButton.OK, MessageBoxImage.Error);
                 return false;
             }
         }
@@ -424,17 +641,17 @@ namespace AccountingApp
                 using (var conn = new SqliteConnection(_connectionString))
                 {
                     conn.Open();
-                    const string sql = @"UPDATE Aids SET
-                        ProjectName = @ProjectName,
-                        VoucherNo = @VoucherNo,
-                        DonorName = @DonorName,
-                        Date = @Date,
-                        Amount = @Amount,
-                        Quantity = @Quantity,
-                        DonationType = @DonationType,
-                        Year = @Year
-                        WHERE Id = @Id";
-                    using (var cmd = new SqliteCommand(sql, conn))
+                    using (var cmd = new SqliteCommand(@"
+UPDATE Aids SET
+    ProjectName = @ProjectName,
+    VoucherNo = @VoucherNo,
+    DonorName = @DonorName,
+    Date = @Date,
+    Amount = @Amount,
+    Quantity = @Quantity,
+    DonationType = @DonationType,
+    Year = @Year
+WHERE Id = @Id", conn))
                     {
                         AddAidParameters(cmd, entry, true);
                         cmd.ExecuteNonQuery();
@@ -442,9 +659,9 @@ namespace AccountingApp
                 }
                 return true;
             }
-            catch (SqliteException)
+            catch (Exception ex)
             {
-                MessageBox.Show("تعذر تحديث بيانات المساعدة في قاعدة البيانات.", "خطأ في التحديث", MessageBoxButton.OK, MessageBoxImage.Error);
+                MessageBox.Show("تعذر تحديث بيانات المساعدة.\n" + ex.Message, "خطأ في التحديث", MessageBoxButton.OK, MessageBoxImage.Error);
                 return false;
             }
         }
@@ -452,9 +669,9 @@ namespace AccountingApp
         private static void AddAidParameters(SqliteCommand cmd, AidEntry entry, bool includeId)
         {
             cmd.Parameters.AddWithValue("@ProjectName", entry.ProjectName);
-            cmd.Parameters.AddWithValue("@VoucherNo", (object)entry.VoucherNo ?? DBNull.Value);
+            cmd.Parameters.AddWithValue("@VoucherNo", entry.VoucherNo);
             cmd.Parameters.AddWithValue("@DonorName", (object)entry.DonorName ?? DBNull.Value);
-            cmd.Parameters.AddWithValue("@Date", entry.Date.ToString("yyyy-MM-dd"));
+            cmd.Parameters.AddWithValue("@Date", entry.Date.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture));
             cmd.Parameters.AddWithValue("@Amount", entry.Amount);
             cmd.Parameters.AddWithValue("@Quantity", entry.Quantity);
             cmd.Parameters.AddWithValue("@DonationType", (object)entry.DonationType ?? DBNull.Value);
@@ -477,196 +694,123 @@ namespace AccountingApp
                 }
                 return true;
             }
-            catch (SqliteException)
+            catch (Exception ex)
             {
-                MessageBox.Show("تعذر حذف السجل من قاعدة البيانات.", "خطأ في الحذف", MessageBoxButton.OK, MessageBoxImage.Error);
+                MessageBox.Show("تعذر حذف السجل.\n" + ex.Message, "خطأ في الحذف", MessageBoxButton.OK, MessageBoxImage.Error);
                 return false;
             }
         }
 
-        private List<ProjectSummary> LoadProjectsSummary(string filterProject, string voucherFilter, DateTime? fromDate, DateTime? toDate)
+        private List<AidEntry> LoadRecentEntries(int year, string project, int limit)
         {
-            var list = new List<ProjectSummary>();
+            var result = new List<AidEntry>();
             using (var conn = new SqliteConnection(_connectionString))
             {
                 conn.Open();
-                int selectedYear = FiscalYearHelper.GetSelectedYear(YearComboBox);
-                var sql = new StringBuilder("SELECT ProjectName, COALESCE(SUM(Amount),0), COALESCE(SUM(Quantity),0) FROM Aids WHERE Year = @Year");
-                var parameters = new Dictionary<string, object> { { "@Year", selectedYear } };
-
-                AppendAidFilters(sql, parameters, filterProject, voucherFilter, fromDate, toDate);
-                sql.Append(" GROUP BY ProjectName ORDER BY ProjectName");
-
-                using (var cmd = new SqliteCommand(sql.ToString(), conn))
+                using (var cmd = new SqliteCommand(@"
+SELECT Id, ProjectName, VoucherNo, DonorName, Date, Amount, Quantity, DonationType, Year
+FROM Aids
+WHERE Year = @Year AND ProjectName = @ProjectName
+ORDER BY date(Date) DESC, Id DESC
+LIMIT @Limit", conn))
                 {
-                    foreach (var parameter in parameters) cmd.Parameters.AddWithValue(parameter.Key, parameter.Value);
+                    cmd.Parameters.AddWithValue("@Year", year);
+                    cmd.Parameters.AddWithValue("@ProjectName", project);
+                    cmd.Parameters.AddWithValue("@Limit", limit);
                     using (var reader = cmd.ExecuteReader())
                     {
-                        while (reader.Read())
-                        {
-                            list.Add(new ProjectSummary
-                            {
-                                ProjectName = reader.GetString(0),
-                                TotalAmount = reader.IsDBNull(1) ? 0 : Convert.ToDecimal(reader.GetValue(1)),
-                                TotalQuantity = reader.IsDBNull(2) ? 0 : Convert.ToInt32(reader.GetValue(2))
-                            });
-                        }
+                        while (reader.Read()) result.Add(ReadAidEntry(reader));
                     }
                 }
             }
-            return list;
+            return result;
         }
 
-        private List<AidEntry> LoadAidDetails(string projectName, string voucherFilter, DateTime? fromDate, DateTime? toDate)
-        {
-            var list = new List<AidEntry>();
-            if (string.IsNullOrWhiteSpace(projectName)) return list;
-
-            using (var conn = new SqliteConnection(_connectionString))
-            {
-                conn.Open();
-                int selectedYear = FiscalYearHelper.GetSelectedYear(YearComboBox);
-                var sql = new StringBuilder(@"SELECT Id, VoucherNo, DonorName, Date, Amount, Quantity, DonationType, ProjectName
-                    FROM Aids WHERE ProjectName = @ProjectName AND Year = @Year");
-                var parameters = new Dictionary<string, object>
-                {
-                    { "@ProjectName", projectName },
-                    { "@Year", selectedYear }
-                };
-
-                AppendVoucherAndDateFilters(sql, parameters, voucherFilter, fromDate, toDate);
-                sql.Append(" ORDER BY date(Date) DESC, Id DESC");
-
-                using (var cmd = new SqliteCommand(sql.ToString(), conn))
-                {
-                    foreach (var parameter in parameters) cmd.Parameters.AddWithValue(parameter.Key, parameter.Value);
-                    using (var reader = cmd.ExecuteReader())
-                    {
-                        while (reader.Read())
-                        {
-                            list.Add(new AidEntry
-                            {
-                                Id = reader.GetInt32(0),
-                                VoucherNo = reader.IsDBNull(1) ? string.Empty : reader.GetString(1),
-                                DonorName = reader.IsDBNull(2) ? string.Empty : reader.GetString(2),
-                                Date = ParseStoredDate(reader.GetString(3)),
-                                Amount = reader.IsDBNull(4) ? 0 : Convert.ToDecimal(reader.GetValue(4)),
-                                Quantity = reader.IsDBNull(5) ? 0 : Convert.ToInt32(reader.GetValue(5)),
-                                DonationType = reader.IsDBNull(6) ? string.Empty : reader.GetString(6),
-                                ProjectName = reader.GetString(7),
-                                Year = selectedYear
-                            });
-                        }
-                    }
-                }
-            }
-            return list;
-        }
-
-        private List<AidEntry> LoadAllAidDetailsForPrinting(string projectFilter, string voucherFilter, DateTime? fromDate, DateTime? toDate)
-        {
-            var list = new List<AidEntry>();
-            using (var conn = new SqliteConnection(_connectionString))
-            {
-                conn.Open();
-                int selectedYear = FiscalYearHelper.GetSelectedYear(YearComboBox);
-                var sql = new StringBuilder(@"SELECT ProjectName, VoucherNo, DonorName, Date, Amount, Quantity, DonationType
-                    FROM Aids WHERE Year = @Year");
-                var parameters = new Dictionary<string, object> { { "@Year", selectedYear } };
-
-                AppendAidFilters(sql, parameters, projectFilter, voucherFilter, fromDate, toDate);
-                sql.Append(" ORDER BY ProjectName, date(Date), Id");
-
-                using (var cmd = new SqliteCommand(sql.ToString(), conn))
-                {
-                    foreach (var parameter in parameters) cmd.Parameters.AddWithValue(parameter.Key, parameter.Value);
-                    using (var reader = cmd.ExecuteReader())
-                    {
-                        while (reader.Read())
-                        {
-                            list.Add(new AidEntry
-                            {
-                                ProjectName = reader.GetString(0),
-                                VoucherNo = reader.IsDBNull(1) ? string.Empty : reader.GetString(1),
-                                DonorName = reader.IsDBNull(2) ? string.Empty : reader.GetString(2),
-                                Date = ParseStoredDate(reader.GetString(3)),
-                                Amount = reader.IsDBNull(4) ? 0 : Convert.ToDecimal(reader.GetValue(4)),
-                                Quantity = reader.IsDBNull(5) ? 0 : Convert.ToInt32(reader.GetValue(5)),
-                                DonationType = reader.IsDBNull(6) ? string.Empty : reader.GetString(6),
-                                Year = selectedYear
-                            });
-                        }
-                    }
-                }
-            }
-            return list;
-        }
-
-        private static void AppendAidFilters(
-            StringBuilder sql,
-            Dictionary<string, object> parameters,
-            string projectFilter,
-            string voucherFilter,
+        private List<AidEntry> LoadFilteredEntries(
+            int year,
+            string project,
+            string quickSearch,
             DateTime? fromDate,
             DateTime? toDate)
         {
-            if (!string.IsNullOrWhiteSpace(projectFilter) && projectFilter != "جميع المشاريع")
+            var result = new List<AidEntry>();
+            using (var conn = new SqliteConnection(_connectionString))
             {
-                sql.Append(" AND ProjectName = @ProjectName");
-                parameters["@ProjectName"] = projectFilter;
-            }
+                conn.Open();
+                var sql = new StringBuilder(@"
+SELECT Id, ProjectName, VoucherNo, DonorName, Date, Amount, Quantity, DonationType, Year
+FROM Aids
+WHERE Year = @Year");
 
-            AppendVoucherAndDateFilters(sql, parameters, voucherFilter, fromDate, toDate);
+                using (var cmd = conn.CreateCommand())
+                {
+                    cmd.Parameters.AddWithValue("@Year", year);
+
+                    if (!string.IsNullOrWhiteSpace(project))
+                    {
+                        sql.Append(" AND ProjectName = @ProjectName");
+                        cmd.Parameters.AddWithValue("@ProjectName", project);
+                    }
+
+                    if (!string.IsNullOrWhiteSpace(quickSearch))
+                    {
+                        sql.Append(@" AND (
+                            COALESCE(VoucherNo, '') LIKE @Quick OR
+                            COALESCE(DonorName, '') LIKE @Quick OR
+                            COALESCE(DonationType, '') LIKE @Quick OR
+                            ProjectName LIKE @Quick
+                        )");
+                        cmd.Parameters.AddWithValue("@Quick", "%" + quickSearch.Trim() + "%");
+                    }
+
+                    if (fromDate.HasValue)
+                    {
+                        sql.Append(" AND date(Date) >= date(@FromDate)");
+                        cmd.Parameters.AddWithValue("@FromDate", fromDate.Value.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture));
+                    }
+
+                    if (toDate.HasValue)
+                    {
+                        sql.Append(" AND date(Date) <= date(@ToDate)");
+                        cmd.Parameters.AddWithValue("@ToDate", toDate.Value.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture));
+                    }
+
+                    sql.Append(" ORDER BY date(Date) DESC, Id DESC");
+                    cmd.CommandText = sql.ToString();
+
+                    using (var reader = cmd.ExecuteReader())
+                    {
+                        while (reader.Read()) result.Add(ReadAidEntry(reader));
+                    }
+                }
+            }
+            return result;
         }
 
-        private static void AppendVoucherAndDateFilters(
-            StringBuilder sql,
-            Dictionary<string, object> parameters,
-            string voucherFilter,
-            DateTime? fromDate,
-            DateTime? toDate)
+        private static AidEntry ReadAidEntry(SqliteDataReader reader)
         {
-            if (!string.IsNullOrWhiteSpace(voucherFilter))
+            return new AidEntry
             {
-                sql.Append(" AND VoucherNo LIKE @VoucherNo");
-                parameters["@VoucherNo"] = "%" + voucherFilter + "%";
-            }
-            if (fromDate.HasValue)
-            {
-                sql.Append(" AND date(Date) >= date(@FromDate)");
-                parameters["@FromDate"] = fromDate.Value.ToString("yyyy-MM-dd");
-            }
-            if (toDate.HasValue)
-            {
-                sql.Append(" AND date(Date) <= date(@ToDate)");
-                parameters["@ToDate"] = toDate.Value.ToString("yyyy-MM-dd");
-            }
+                Id = reader.GetInt32(0),
+                ProjectName = reader.IsDBNull(1) ? string.Empty : reader.GetString(1),
+                VoucherNo = reader.IsDBNull(2) ? string.Empty : reader.GetString(2),
+                DonorName = reader.IsDBNull(3) ? string.Empty : reader.GetString(3),
+                Date = ParseStoredDate(reader.GetString(4)),
+                Amount = reader.IsDBNull(5) ? 0 : Convert.ToDecimal(reader.GetValue(5)),
+                Quantity = reader.IsDBNull(6) ? 0 : Convert.ToInt32(reader.GetValue(6)),
+                DonationType = reader.IsDBNull(7) ? string.Empty : reader.GetString(7),
+                Year = reader.IsDBNull(8) ? 0 : Convert.ToInt32(reader.GetValue(8))
+            };
         }
 
         private static DateTime ParseStoredDate(string value)
         {
-            if (DateTime.TryParseExact(value, "yyyy-MM-dd", CultureInfo.InvariantCulture, DateTimeStyles.None, out DateTime date))
+            DateTime date;
+            if (DateTime.TryParseExact(value, "yyyy-MM-dd", CultureInfo.InvariantCulture, DateTimeStyles.None, out date))
             {
                 return date;
             }
             return DateTime.Parse(value, CultureInfo.CurrentCulture);
-        }
-        #endregion
-
-        #region UI & Helpers
-        private string GetVoucherSearchText()
-        {
-            return _searchVoucherNoTextBox?.Text?.Trim();
-        }
-
-        private bool TryParseDate(string dateText, out DateTime date, bool showMessage = true)
-        {
-            int? defaultYear = null;
-            if (YearComboBox.SelectedItem != null && int.TryParse(YearComboBox.SelectedItem.ToString(), out int year))
-            {
-                defaultYear = year;
-            }
-            return DatabaseService.TryParseDate(dateText, out date, showMessage, defaultYear);
         }
 
         private bool TryGetSearchDateRange(bool showMessage, out DateTime? fromDate, out DateTime? toDate)
@@ -674,18 +818,14 @@ namespace AccountingApp
             fromDate = null;
             toDate = null;
 
-            if (!TryParseOptionalSearchDate(SearchFromDateTextBox.Text, "تاريخ بداية البحث", showMessage, out fromDate)) return false;
-            if (!TryParseOptionalSearchDate(SearchToDateTextBox.Text, "تاريخ نهاية البحث", showMessage, out toDate)) return false;
+            if (!TryParseOptionalSearchDate(SearchFromDateTextBox.Text, "تاريخ البداية", showMessage, out fromDate)) return false;
+            if (!TryParseOptionalSearchDate(SearchToDateTextBox.Text, "تاريخ النهاية", showMessage, out toDate)) return false;
 
             if (fromDate.HasValue && toDate.HasValue && fromDate.Value.Date > toDate.Value.Date)
             {
                 if (showMessage)
                 {
-                    MessageBox.Show(
-                        "تاريخ بداية البحث يجب أن يكون قبل أو مساوياً لتاريخ النهاية.",
-                        "نطاق تاريخ غير صحيح",
-                        MessageBoxButton.OK,
-                        MessageBoxImage.Warning);
+                    MessageBox.Show("تاريخ البداية يجب أن يكون قبل أو مساويًا لتاريخ النهاية.", "نطاق تاريخ غير صحيح", MessageBoxButton.OK, MessageBoxImage.Warning);
                 }
                 return false;
             }
@@ -698,21 +838,20 @@ namespace AccountingApp
             date = null;
             if (string.IsNullOrWhiteSpace(text)) return true;
 
-            if (!TryParseDate(text, out DateTime parsed, false))
+            DateTime parsed;
+            if (!TryParseDateForSelectedYear(text, out parsed, false))
             {
                 if (showMessage)
                 {
-                    MessageBox.Show($"{fieldName} غير صحيح.", "خطأ في التاريخ", MessageBoxButton.OK, MessageBoxImage.Warning);
+                    MessageBox.Show(fieldName + " غير صحيح.", "خطأ في التاريخ", MessageBoxButton.OK, MessageBoxImage.Warning);
                 }
                 return false;
             }
 
-            if (parsed.Year != FiscalYearHelper.GetSelectedYear(YearComboBox))
+            int year = FiscalYearHelper.GetSelectedYear(YearComboBox);
+            if (parsed.Year != year)
             {
-                if (showMessage)
-                {
-                    FiscalYearHelper.ValidateDateInSelectedYear(parsed, YearComboBox, fieldName);
-                }
+                if (showMessage) FiscalYearHelper.ValidateDateInSelectedYear(parsed, YearComboBox, fieldName);
                 return false;
             }
 
@@ -720,61 +859,62 @@ namespace AccountingApp
             return true;
         }
 
-        private void ResetDateFieldsToSelectedYear()
+        private bool TryParseEntryDate(string text, out DateTime date, bool showMessage)
+        {
+            return TryParseDateForSelectedYear(text, out date, showMessage);
+        }
+
+        private bool TryParseDateForSelectedYear(string text, out DateTime date, bool showMessage)
+        {
+            int year = FiscalYearHelper.GetSelectedYear(YearComboBox);
+            return DatabaseService.TryParseDate(text, out date, showMessage, year);
+        }
+
+        private void ResetSearchDateRange()
         {
             FiscalYearHelper.ResetDateRange(YearComboBox, SearchFromDateTextBox, SearchToDateTextBox);
         }
 
-        private bool PopulateAidEntry(AidEntry entry, string projectName)
+        private void SetDefaultEntryDate()
         {
-            string voucherNo = _voucherNoTextBox?.Text?.Trim();
-            if (string.IsNullOrWhiteSpace(voucherNo))
+            int year = FiscalYearHelper.GetSelectedYear(YearComboBox);
+            DateTime date = year == DateTime.Now.Year ? DateTime.Now.Date : new DateTime(year, 1, 1);
+            AidDateTextBox.Text = date.ToString(AppSettings.DateFormat);
+        }
+
+        private void ClearEntryFields(bool keepDate)
+        {
+            string date = keepDate ? AidDateTextBox.Text : null;
+            VoucherNoTextBox.Clear();
+            DonorNameTextBox.Clear();
+            DonationTypeTextBox.Clear();
+            QuantityTextBox.Clear();
+            AmountTextBox.Clear();
+
+            if (keepDate && !string.IsNullOrWhiteSpace(date))
             {
-                MessageBox.Show("الرجاء إدخال رقم السند.", "رقم السند مطلوب", MessageBoxButton.OK, MessageBoxImage.Warning);
-                _voucherNoTextBox?.Focus();
-                return false;
+                AidDateTextBox.Text = date;
             }
-
-            var fields = GetAidFields(projectName);
-            if (fields == null || fields.Date == null || fields.Quantity == null || fields.Amount == null)
+            else
             {
-                MessageBox.Show("لم يتم العثور على حقول الإدخال لهذا المشروع.", "خطأ", MessageBoxButton.OK, MessageBoxImage.Error);
-                return false;
+                SetDefaultEntryDate();
             }
+        }
 
-            if (!TryParseDate(fields.Date.Text, out DateTime parsedDate, true)) return false;
-            if (!TryParseNonNegativeInt(fields.Quantity.Text, "الكمية/العدد", out int quantity)) return false;
-            if (!TryParseNonNegativeDecimal(fields.Amount.Text, "المبلغ", out decimal amount)) return false;
+        private void ExitEditMode()
+        {
+            _aidToEdit = null;
+            EntryModeTextBlock.Text = "إضافة مساعدة جديدة";
+            SaveAidButton.Content = "حفظ المساعدة";
+            CancelEditButton.Visibility = Visibility.Collapsed;
+        }
 
-            if (quantity == 0 && amount == 0)
-            {
-                MessageBox.Show(
-                    "يجب إدخال كمية/عدد أكبر من صفر أو مبلغ أكبر من صفر على الأقل.",
-                    "بيانات المساعدة غير مكتملة",
-                    MessageBoxButton.OK,
-                    MessageBoxImage.Warning);
-                return false;
-            }
-
-            string typeText = fields.Type?.Text?.Trim();
-            if ((projectName == "إفطار صائم" || projectName == "الحقيبة المدرسية") && !string.IsNullOrWhiteSpace(typeText))
-            {
-                if (!int.TryParse(typeText, NumberStyles.Integer, CultureInfo.CurrentCulture, out int families) || families <= 0)
-                {
-                    MessageBox.Show("عدد الأسر يجب أن يكون رقماً صحيحاً أكبر من صفر.", "قيمة غير صحيحة", MessageBoxButton.OK, MessageBoxImage.Warning);
-                    return false;
-                }
-                typeText = $"أسر: {families}";
-            }
-
-            entry.VoucherNo = voucherNo;
-            entry.Date = parsedDate;
-            entry.DonorName = fields.Donor?.Text?.Trim();
-            entry.Quantity = quantity;
-            entry.Amount = amount;
-            entry.DonationType = typeText;
-            entry.Year = FiscalYearHelper.GetSelectedYear(YearComboBox);
-            return true;
+        private void SetEntryStatus(string message, bool success)
+        {
+            EntryStatusTextBlock.Text = message;
+            EntryStatusTextBlock.Foreground = success
+                ? new SolidColorBrush(Color.FromRgb(39, 103, 73))
+                : new SolidColorBrush(Color.FromRgb(74, 85, 104));
         }
 
         private static bool TryParseNonNegativeInt(string text, string fieldName, out int value)
@@ -784,7 +924,7 @@ namespace AccountingApp
 
             if (!int.TryParse(text.Trim(), NumberStyles.Integer | NumberStyles.AllowThousands, CultureInfo.CurrentCulture, out value) || value < 0)
             {
-                MessageBox.Show($"{fieldName} يجب أن يكون رقماً صحيحاً صفراً أو أكبر.", "قيمة غير صحيحة", MessageBoxButton.OK, MessageBoxImage.Warning);
+                MessageBox.Show(fieldName + " يجب أن يكون رقمًا صحيحًا صفرًا أو أكبر.", "قيمة غير صحيحة", MessageBoxButton.OK, MessageBoxImage.Warning);
                 return false;
             }
             return true;
@@ -801,322 +941,154 @@ namespace AccountingApp
 
             if (!parsed || value < 0)
             {
-                MessageBox.Show($"{fieldName} يجب أن يكون رقماً صفراً أو أكبر.", "قيمة غير صحيحة", MessageBoxButton.OK, MessageBoxImage.Warning);
+                MessageBox.Show(fieldName + " يجب أن يكون رقمًا صفرًا أو أكبر.", "قيمة غير صحيحة", MessageBoxButton.OK, MessageBoxImage.Warning);
                 return false;
             }
             return true;
         }
 
-        private void PopulateUIForEdit(AidEntry entry)
-        {
-            if (_voucherNoTextBox != null) _voucherNoTextBox.Text = entry.VoucherNo ?? string.Empty;
-
-            var fields = GetAidFields(entry.ProjectName);
-            if (fields == null) return;
-
-            if (fields.Date != null) fields.Date.Text = entry.Date.ToString(AppSettings.DateFormat);
-            if (fields.Donor != null) fields.Donor.Text = entry.DonorName;
-            if (fields.Quantity != null) fields.Quantity.Text = entry.Quantity == 0 ? string.Empty : entry.Quantity.ToString();
-            if (fields.Amount != null) fields.Amount.Text = entry.Amount == 0 ? string.Empty : entry.Amount.ToString("0.###");
-
-            if (fields.Type != null)
-            {
-                if (!string.IsNullOrWhiteSpace(entry.DonationType) &&
-                    (entry.ProjectName == "إفطار صائم" || entry.ProjectName == "الحقيبة المدرسية"))
-                {
-                    fields.Type.Text = entry.DonationType.Replace("أسر: ", string.Empty).Trim();
-                }
-                else
-                {
-                    fields.Type.Text = entry.DonationType;
-                }
-            }
-        }
-
-        private void RefreshSummaryGrid(bool showDateErrors)
-        {
-            if (YearComboBox.SelectedItem == null) return;
-            if (!TryGetSearchDateRange(showDateErrors, out DateTime? fromDate, out DateTime? toDate)) return;
-
-            string filterProject = SearchProjectComboBox.SelectedItem as string;
-            string selectedProjectName = (ProjectsSummaryDataGrid.SelectedItem as ProjectSummary)?.ProjectName;
-
-            var projects = LoadProjectsSummary(filterProject, GetVoucherSearchText(), fromDate, toDate);
-            ProjectsSummaryDataGrid.ItemsSource = null;
-            ProjectsSummaryDataGrid.ItemsSource = projects;
-
-            if (!string.IsNullOrEmpty(selectedProjectName))
-            {
-                var itemToReselect = projects.FirstOrDefault(p => p.ProjectName == selectedProjectName);
-                if (itemToReselect != null) ProjectsSummaryDataGrid.SelectedItem = itemToReselect;
-            }
-
-            if (ProjectsSummaryDataGrid.SelectedItem == null && projects.Count > 0)
-            {
-                ProjectsSummaryDataGrid.SelectedIndex = 0;
-            }
-            else if (projects.Count == 0)
-            {
-                AidsDataGrid.ItemsSource = null;
-                UpdateDetailsColumns(null);
-            }
-        }
-
-        private void UpdateDetailsColumns(string projectName)
-        {
-            QuantityColumn.Visibility = Visibility.Visible;
-            DonationTypeColumn.Visibility = Visibility.Visible;
-
-            switch (projectName)
-            {
-                case "الطرود الغذائية":
-                    QuantityColumn.Header = "عدد الطرود";
-                    DonationTypeColumn.Header = "نوع التبرع";
-                    break;
-                case "الملابس والأحذية":
-                    QuantityColumn.Header = "عدد الأسر";
-                    DonationTypeColumn.Header = string.Empty;
-                    DonationTypeColumn.Visibility = Visibility.Collapsed;
-                    break;
-                case "معونة الشتاء":
-                    QuantityColumn.Header = "عدد الأسر";
-                    DonationTypeColumn.Header = "نوع التبرع";
-                    break;
-                case "الحقيبة المدرسية":
-                    QuantityColumn.Header = "عدد الحقائب";
-                    DonationTypeColumn.Header = "عدد الأسر";
-                    break;
-                case "كسوة العيد":
-                case "الأضاحي":
-                    QuantityColumn.Header = "عدد الأسر";
-                    DonationTypeColumn.Header = string.Empty;
-                    DonationTypeColumn.Visibility = Visibility.Collapsed;
-                    break;
-                case "إفطار صائم":
-                    QuantityColumn.Header = "عدد الوجبات";
-                    DonationTypeColumn.Header = "عدد الأسر";
-                    break;
-                case "أثاث منازل للفقراء":
-                    QuantityColumn.Header = "عدد القطع";
-                    DonationTypeColumn.Header = "البيان";
-                    break;
-                case "مواد مستهلكة للفقراء":
-                case "مواد مستهلكة للمركز":
-                case "أدوية ومستلزمات طبية":
-                    QuantityColumn.Header = "الكمية";
-                    DonationTypeColumn.Header = "البيان";
-                    break;
-                case "نذور وكفارات":
-                case "أصول ثابتة":
-                    QuantityColumn.Header = "العدد";
-                    DonationTypeColumn.Header = "البيان";
-                    break;
-                default:
-                    QuantityColumn.Header = "الكمية/العدد";
-                    DonationTypeColumn.Header = "نوع التبرع";
-                    break;
-            }
-        }
-
-        private void ClearProjectFields(string projectName)
-        {
-            var fields = GetAidFields(projectName);
-            fields?.Date?.Clear();
-            fields?.Donor?.Clear();
-            fields?.Type?.Clear();
-            fields?.Quantity?.Clear();
-            fields?.Amount?.Clear();
-        }
-
-        private void CancelCurrentEditAndClear()
-        {
-            string editProject = _aidToEdit?.ProjectName;
-            ExitEditMode();
-            if (!string.IsNullOrWhiteSpace(editProject)) ClearProjectFields(editProject);
-            _voucherNoTextBox?.Clear();
-        }
-
-        private void SetButtonContent(string projectName, string content)
-        {
-            var fields = GetAidFields(projectName);
-            if (fields?.SubmitButton != null) fields.SubmitButton.Content = content;
-        }
-
-        private AidFieldSet GetAidFields(string projectName)
-        {
-            switch (projectName)
-            {
-                case "الطرود الغذائية":
-                    return new AidFieldSet { Date = FoodDateTextBox, Donor = FoodDonorTextBox, Type = FoodTypeTextBox, Quantity = FoodQuantityTextBox, Amount = FoodAmountTextBox, SubmitButton = AddFoodButton };
-                case "الملابس والأحذية":
-                    return new AidFieldSet { Date = ClothesDateTextBox, Donor = ClothesDonor, Quantity = ClothesQuantity, Amount = ClothesAmount, SubmitButton = AddClothesButton };
-                case "معونة الشتاء":
-                    return new AidFieldSet { Date = WinterDateTextBox, Donor = WinterDonor, Type = WinterType, Quantity = WinterQuantity, Amount = WinterAmount, SubmitButton = AddWinterButton };
-                case "الحقيبة المدرسية":
-                    return new AidFieldSet { Date = BagDateTextBox, Donor = BagDonor, Type = BagFamilies, Quantity = BagQuantity, Amount = BagAmount, SubmitButton = AddBagButton };
-                case "كسوة العيد":
-                    return new AidFieldSet { Date = EidDateTextBox, Donor = EidDonor, Quantity = EidQuantity, Amount = EidAmount, SubmitButton = AddEidButton };
-                case "إفطار صائم":
-                    return new AidFieldSet { Date = IftarDateTextBox, Donor = IftarDonor, Type = IftarFamilies, Quantity = IftarQuantity, Amount = IftarAmount, SubmitButton = AddIftarButton };
-                case "الأضاحي":
-                    return new AidFieldSet { Date = UdhiyahDateTextBox, Donor = UdhiyahDonor, Quantity = UdhiyahQuantity, Amount = UdhiyahAmount, SubmitButton = AddUdhiyahButton };
-                case "أثاث منازل للفقراء":
-                    return new AidFieldSet { Date = FurnitureDateTextBox, Donor = FurnitureDonor, Type = FurnitureType, Quantity = FurnitureQuantity, Amount = FurnitureAmount, SubmitButton = AddFurnitureButton };
-                case "مواد مستهلكة للفقراء":
-                    return new AidFieldSet { Date = ConsumablesPoorDateTextBox, Donor = ConsumablesPoorDonor, Type = ConsumablesPoorType, Quantity = ConsumablesPoorQuantity, Amount = ConsumablesPoorAmount, SubmitButton = AddConsumablesPoorButton };
-                case "نذور وكفارات":
-                    return new AidFieldSet { Date = VowsDateTextBox, Donor = VowsDonor, Type = VowsType, Quantity = VowsQuantity, Amount = VowsAmount, SubmitButton = AddVowsButton };
-                case "أصول ثابتة":
-                    return new AidFieldSet { Date = FixedAssetsDateTextBox, Donor = FixedAssetsDonor, Type = FixedAssetsType, Quantity = FixedAssetsQuantity, Amount = FixedAssetsAmount, SubmitButton = AddFixedAssetsButton };
-                case "مواد مستهلكة للمركز":
-                    return new AidFieldSet { Date = ConsumablesCenterDateTextBox, Donor = ConsumablesCenterDonor, Type = ConsumablesCenterType, Quantity = ConsumablesCenterQuantity, Amount = ConsumablesCenterAmount, SubmitButton = AddConsumablesCenterButton };
-                case "أدوية ومستلزمات طبية":
-                    return new AidFieldSet { Date = MedicalDateTextBox, Donor = MedicalDonor, Type = MedicalType, Quantity = MedicalQuantity, Amount = MedicalAmount, SubmitButton = AddMedicalButton };
-                default:
-                    return null;
-            }
-        }
-
-        private void ExitEditMode()
-        {
-            if (_aidToEdit != null)
-            {
-                SetButtonContent(_aidToEdit.ProjectName, "إضافة إدخال");
-            }
-            SetButtonContent((AidEntryTabControl.SelectedItem as TabItem)?.Header?.ToString(), "إضافة إدخال");
-            _aidToEdit = null;
-        }
-
-        private void DateInput_KeyDown(object sender, KeyEventArgs e)
+        private void MoveFocusOnEnter(object sender, KeyEventArgs e)
         {
             if (e.Key != Key.Enter) return;
 
-            TextBox txt = sender as TextBox;
-            if (txt != null && !string.IsNullOrWhiteSpace(txt.Text))
+            var request = new TraversalRequest(FocusNavigationDirection.Next);
+            UIElement focused = Keyboard.FocusedElement as UIElement;
+            focused?.MoveFocus(request);
+            e.Handled = true;
+        }
+
+        private void EntryDate_KeyDown(object sender, KeyEventArgs e)
+        {
+            if (e.Key != Key.Enter) return;
+
+            DateTime date;
+            if (!TryParseEntryDate(AidDateTextBox.Text, out date, true))
             {
-                if (!TryParseDate(txt.Text, out DateTime parsedDate, false)) return;
-                txt.Text = parsedDate.ToString(AppSettings.DateFormat);
+                e.Handled = true;
+                return;
             }
 
+            AidDateTextBox.Text = date.ToString(AppSettings.DateFormat);
             MoveFocusOnEnter(sender, e);
         }
 
-        private void MoveFocusOnEnter(object sender, KeyEventArgs e)
+        private void SearchDate_KeyDown(object sender, KeyEventArgs e)
         {
-            if (e.Key == Key.Enter)
+            if (e.Key != Key.Enter) return;
+
+            var textBox = sender as TextBox;
+            if (textBox != null && !string.IsNullOrWhiteSpace(textBox.Text))
             {
-                var request = new TraversalRequest(FocusNavigationDirection.Next);
-                if (Keyboard.FocusedElement is UIElement elementWithFocus)
+                DateTime date;
+                if (!TryParseDateForSelectedYear(textBox.Text, out date, true))
                 {
-                    elementWithFocus.MoveFocus(request);
+                    e.Handled = true;
+                    return;
                 }
-                e.Handled = true;
+                textBox.Text = date.ToString(AppSettings.DateFormat);
             }
+
+            RefreshSearchResults(true);
+            e.Handled = true;
         }
 
-        private void LastField_KeyDown(object sender, KeyEventArgs e)
+        private void AmountTextBox_KeyDown(object sender, KeyEventArgs e)
         {
-            if (e.Key == Key.Enter)
-            {
-                AddAid_Click(sender, new RoutedEventArgs());
-                e.Handled = true;
-            }
+            if (e.Key != Key.Enter) return;
+            SaveCurrentEntry();
+            e.Handled = true;
         }
 
-        private FlowDocument CreatePrintDocument(List<AidEntry> data, string project, DateTime? fromDate, DateTime? toDate)
+        private FlowDocument CreatePrintDocument(List<AidEntry> data, DateTime? fromDate, DateTime? toDate)
         {
-            var doc = new FlowDocument
+            var document = new FlowDocument
             {
                 FlowDirection = FlowDirection.RightToLeft,
                 FontFamily = new FontFamily("Arial")
             };
 
-            string title = "تقرير المساعدات" + (!string.IsNullOrEmpty(project) ? $" - {project}" : string.Empty);
-            doc.Blocks.Add(new Paragraph(new Run(title))
+            document.Blocks.Add(new Paragraph(new Run("تقرير المساعدات"))
             {
                 FontSize = 20,
                 FontWeight = FontWeights.Bold,
                 TextAlignment = TextAlignment.Center
             });
 
-            string voucherFilter = GetVoucherSearchText();
-            string voucherPart = string.IsNullOrWhiteSpace(voucherFilter) ? string.Empty : $"    رقم السند: {voucherFilter}";
-            doc.Blocks.Add(new Paragraph(new Run(
-                $"السنة المالية: {YearComboBox.SelectedItem}    من: {(fromDate.HasValue ? fromDate.Value.ToString(AppSettings.DateFormat) : "البداية")}  إلى: {(toDate.HasValue ? toDate.Value.ToString(AppSettings.DateFormat) : "النهاية")}{voucherPart}"))
+            string project = SearchProjectComboBox.SelectedItem?.ToString() ?? "جميع المشاريع";
+            string quick = QuickSearchTextBox.Text?.Trim();
+            string quickPart = string.IsNullOrWhiteSpace(quick) ? string.Empty : "    بحث: " + quick;
+
+            document.Blocks.Add(new Paragraph(new Run(
+                $"السنة المالية: {YearComboBox.SelectedItem}    النوع: {project}    " +
+                $"من: {(fromDate.HasValue ? fromDate.Value.ToString(AppSettings.DateFormat) : "البداية")}    " +
+                $"إلى: {(toDate.HasValue ? toDate.Value.ToString(AppSettings.DateFormat) : "النهاية")}{quickPart}"))
             {
-                FontSize = 12,
+                FontSize = 11,
                 TextAlignment = TextAlignment.Center,
-                Margin = new Thickness(0, 0, 0, 20)
+                Margin = new Thickness(0, 0, 0, 15)
             });
 
-            var table = new Table
-            {
-                CellSpacing = 0,
-                BorderBrush = Brushes.Gray,
-                BorderThickness = new Thickness(1)
-            };
-            doc.Blocks.Add(table);
+            var table = new Table { CellSpacing = 0, BorderBrush = Brushes.Gray, BorderThickness = new Thickness(1) };
+            document.Blocks.Add(table);
 
             table.Columns.Add(new TableColumn { Width = new GridLength(1.3, GridUnitType.Star) });
             table.Columns.Add(new TableColumn { Width = new GridLength(0.8, GridUnitType.Star) });
-            table.Columns.Add(new TableColumn { Width = new GridLength(1.3, GridUnitType.Star) });
-            table.Columns.Add(new TableColumn { Width = new GridLength(0.9, GridUnitType.Star) });
+            table.Columns.Add(new TableColumn { Width = new GridLength(0.8, GridUnitType.Star) });
             table.Columns.Add(new TableColumn { Width = new GridLength(1.2, GridUnitType.Star) });
+            table.Columns.Add(new TableColumn { Width = new GridLength(0.8, GridUnitType.Star) });
+            table.Columns.Add(new TableColumn { Width = new GridLength(1.1, GridUnitType.Star) });
             table.Columns.Add(new TableColumn { Width = new GridLength(0.8, GridUnitType.Star) });
 
             var headerGroup = new TableRowGroup();
             table.RowGroups.Add(headerGroup);
-            var headerRow = new TableRow { Background = Brushes.LightGray, FontWeight = FontWeights.Bold };
-            headerGroup.Rows.Add(headerRow);
-            headerRow.Cells.Add(CreatePrintCell("المشروع", true));
-            headerRow.Cells.Add(CreatePrintCell("رقم السند", true));
-            headerRow.Cells.Add(CreatePrintCell("المتبرع", true));
-            headerRow.Cells.Add(CreatePrintCell("التاريخ", true));
-            headerRow.Cells.Add(CreatePrintCell("الكمية/النوع", true));
-            headerRow.Cells.Add(CreatePrintCell("المبلغ", true));
+            var header = new TableRow { Background = Brushes.LightGray, FontWeight = FontWeights.Bold };
+            headerGroup.Rows.Add(header);
+            header.Cells.Add(CreatePrintCell("المشروع", true));
+            header.Cells.Add(CreatePrintCell("السند", true));
+            header.Cells.Add(CreatePrintCell("التاريخ", true));
+            header.Cells.Add(CreatePrintCell("المتبرع", true));
+            header.Cells.Add(CreatePrintCell("الكمية", true));
+            header.Cells.Add(CreatePrintCell("البيان/النوع", true));
+            header.Cells.Add(CreatePrintCell("المبلغ", true));
 
             var dataGroup = new TableRowGroup();
             table.RowGroups.Add(dataGroup);
-            foreach (var item in data)
+            foreach (AidEntry item in data)
             {
                 var row = new TableRow();
                 dataGroup.Rows.Add(row);
                 row.Cells.Add(CreatePrintCell(item.ProjectName));
                 row.Cells.Add(CreatePrintCell(item.VoucherNo));
-                row.Cells.Add(CreatePrintCell(item.DonorName));
                 row.Cells.Add(CreatePrintCell(item.Date.ToString(AppSettings.DateFormat)));
-
-                string quantityText = item.Quantity > 0 ? item.Quantity.ToString() : string.Empty;
-                if (!string.IsNullOrWhiteSpace(item.DonationType))
-                {
-                    quantityText += string.IsNullOrEmpty(quantityText)
-                        ? item.DonationType
-                        : $" ({item.DonationType})";
-                }
-
-                row.Cells.Add(CreatePrintCell(quantityText));
-                row.Cells.Add(CreatePrintCell(item.Amount > 0 ? item.Amount.ToString("N3") : string.Empty));
+                row.Cells.Add(CreatePrintCell(item.DonorName));
+                row.Cells.Add(CreatePrintCell(item.Quantity == 0 ? string.Empty : item.Quantity.ToString("N0")));
+                row.Cells.Add(CreatePrintCell(item.DonationType));
+                row.Cells.Add(CreatePrintCell(item.Amount == 0 ? string.Empty : item.Amount.ToString("N3")));
             }
 
-            return doc;
+            decimal totalAmount = data.Sum(x => x.Amount);
+            int totalQuantity = data.Sum(x => x.Quantity);
+            document.Blocks.Add(new Paragraph(new Run(
+                $"عدد السجلات: {data.Count:N0}    إجمالي المبلغ: {totalAmount:N3}    إجمالي الكمية/العدد: {totalQuantity:N0}"))
+            {
+                FontWeight = FontWeights.Bold,
+                Margin = new Thickness(0, 12, 0, 0),
+                TextAlignment = TextAlignment.Right
+            });
+
+            return document;
         }
 
         private static TableCell CreatePrintCell(string text, bool header = false)
         {
-            var paragraph = new Paragraph(new Run(text ?? string.Empty)) { Margin = new Thickness(3) };
+            var paragraph = new Paragraph(new Run(text ?? string.Empty)) { Margin = new Thickness(2) };
             if (header) paragraph.FontWeight = FontWeights.Bold;
             return new TableCell(paragraph)
             {
-                Padding = new Thickness(5),
+                Padding = new Thickness(4),
                 BorderBrush = header ? Brushes.Gray : Brushes.Gainsboro,
                 BorderThickness = new Thickness(0, 0, 1, 1)
             };
         }
-
-        private void AddUpdate_Click(object sender, RoutedEventArgs e)
-        {
-            AddAid_Click(sender, e);
-        }
-        #endregion
     }
 }
