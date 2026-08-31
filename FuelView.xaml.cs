@@ -1,4 +1,4 @@
-﻿﻿using Microsoft.Data.Sqlite;
+using Microsoft.Data.Sqlite;
 using System;
 using System.Collections.Generic;
 using System.Globalization;
@@ -7,9 +7,9 @@ using System.Text;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Documents;
+using System.Windows.Input;
 using System.Windows.Media;
 using System.Printing;
-using System.Windows.Input;
 
 namespace AccountingApp
 {
@@ -29,7 +29,6 @@ namespace AccountingApp
         {
             FiscalYearHelper.SelectCurrentYear(YearComboBox);
             ResetDateFieldsToSelectedYear();
-
             RefreshAllData();
         }
 
@@ -46,33 +45,49 @@ namespace AccountingApp
             var searchCarList = new List<string> { "الكل" };
             searchCarList.AddRange(cars);
 
-            var currentSearch = SearchCarComboBox.SelectedItem;
+            string currentSearch = SearchCarComboBox.SelectedItem as string;
             SearchCarComboBox.ItemsSource = searchCarList;
-            SearchCarComboBox.SelectedItem = currentSearch ?? "الكل";
+            SearchCarComboBox.SelectedItem = !string.IsNullOrWhiteSpace(currentSearch) && searchCarList.Contains(currentSearch)
+                ? currentSearch
+                : "الكل";
 
-            var currentInvoiceCar = InvoiceCarComboBox.SelectedItem;
+            string currentInvoiceCar = InvoiceCarComboBox.SelectedItem as string;
             InvoiceCarComboBox.ItemsSource = cars;
-            InvoiceCarComboBox.SelectedItem = currentInvoiceCar;
+            if (!string.IsNullOrWhiteSpace(currentInvoiceCar) && cars.Contains(currentInvoiceCar))
+            {
+                InvoiceCarComboBox.SelectedItem = currentInvoiceCar;
+            }
 
-            var currentSummaryCar = SummaryCarComboBox.SelectedItem;
+            string currentSummaryCar = SummaryCarComboBox.SelectedItem as string;
             SummaryCarComboBox.ItemsSource = searchCarList;
-            SummaryCarComboBox.SelectedItem = currentSummaryCar ?? "الكل";
+            SummaryCarComboBox.SelectedItem = !string.IsNullOrWhiteSpace(currentSummaryCar) && searchCarList.Contains(currentSummaryCar)
+                ? currentSummaryCar
+                : "الكل";
         }
 
         private void RefreshFuelInvoicesGrid()
         {
             if (YearComboBox.SelectedItem == null) return;
+
+            if (!TryParseOptionalDate(SearchFromDateTextBox.Text, "تاريخ بداية البحث", out DateTime? fromDate)) return;
+            if (!TryParseOptionalDate(SearchToDateTextBox.Text, "تاريخ نهاية البحث", out DateTime? toDate)) return;
+
+            if (fromDate.HasValue && toDate.HasValue && fromDate.Value.Date > toDate.Value.Date)
+            {
+                MessageBox.Show(
+                    "تاريخ بداية البحث يجب أن يكون قبل أو مساوياً لتاريخ النهاية.",
+                    "نطاق تاريخ غير صحيح",
+                    MessageBoxButton.OK,
+                    MessageBoxImage.Warning);
+                return;
+            }
+
             string selectedCar = SearchCarComboBox.SelectedItem as string;
             if (selectedCar == "الكل") selectedCar = null;
-
-            DateTime? fromDate = null, toDate = null;
-            if (TryParseDate(SearchFromDateTextBox.Text, out DateTime fromDt, false)) fromDate = fromDt;
-            if (TryParseDate(SearchToDateTextBox.Text, out DateTime toDt, false)) toDate = toDt;
 
             bool unpaidOnly = ShowUnpaidOnlyCheckBox.IsChecked ?? false;
             var invoices = LoadFuelInvoices(selectedCar, fromDate, toDate, unpaidOnly);
 
-            // إعادة تعيين ItemsSource لضمان التحديث الصحيح
             FuelInvoicesDataGrid.ItemsSource = null;
             FuelInvoicesDataGrid.ItemsSource = invoices;
         }
@@ -84,9 +99,13 @@ namespace AccountingApp
 
         private void RefreshData_Event(object sender, RoutedEventArgs e)
         {
+            if (!IsLoaded) return;
+
             if (sender == YearComboBox)
             {
+                ClearFields_Click(null, null);
                 ResetDateFieldsToSelectedYear();
+                TotalAmountTextBlock.Text = "0.000";
             }
 
             RefreshFuelInvoicesGrid();
@@ -104,26 +123,47 @@ namespace AccountingApp
         #region Car Management
         private void AddCar_Click(object sender, RoutedEventArgs e)
         {
-            string newCarNumber = NewCarNumberTextBox.Text.Trim();
-            if (string.IsNullOrEmpty(newCarNumber)) { MessageBox.Show("الرجاء إدخال رقم السيارة."); return; }
+            string newCarNumber = (NewCarNumberTextBox.Text ?? string.Empty).Trim();
+            if (string.IsNullOrEmpty(newCarNumber))
+            {
+                MessageBox.Show("الرجاء إدخال رقم السيارة.");
+                return;
+            }
+
             if (SaveCar(new Car { CarNumber = newCarNumber }))
             {
                 MessageBox.Show("تمت إضافة السيارة بنجاح.");
                 NewCarNumberTextBox.Clear();
                 RefreshAllData();
             }
-            else { MessageBox.Show("هذه السيارة موجودة بالفعل."); }
+            else
+            {
+                MessageBox.Show("هذه السيارة موجودة بالفعل.");
+            }
         }
 
         private void DeleteCar_Click(object sender, RoutedEventArgs e)
         {
-            if ((sender as Button)?.DataContext is Car selectedCar)
+            if (!((sender as Button)?.DataContext is Car selectedCar)) return;
+
+            if (HasFuelInvoices(selectedCar.CarNumber))
             {
-                if (MessageBox.Show($"هل أنت متأكد من حذف السيارة {selectedCar.CarNumber}؟ سيتم حذف جميع فواتيرها.", "تأكيد الحذف", MessageBoxButton.YesNo, MessageBoxImage.Warning) == MessageBoxResult.Yes)
-                {
-                    DeleteCar(selectedCar.Id);
-                    RefreshAllData();
-                }
+                MessageBox.Show(
+                    $"لا يمكن حذف السيارة {selectedCar.CarNumber} لأنها مرتبطة بفواتير وقود محفوظة.\n\nتم منع الحذف لحماية السجل التاريخي.",
+                    "لا يمكن حذف السيارة",
+                    MessageBoxButton.OK,
+                    MessageBoxImage.Warning);
+                return;
+            }
+
+            if (MessageBox.Show(
+                $"هل أنت متأكد من حذف السيارة {selectedCar.CarNumber}؟",
+                "تأكيد الحذف",
+                MessageBoxButton.YesNo,
+                MessageBoxImage.Warning) == MessageBoxResult.Yes)
+            {
+                DeleteCar(selectedCar.Id);
+                RefreshAllData();
             }
         }
         #endregion
@@ -131,17 +171,25 @@ namespace AccountingApp
         #region Invoice Management
         private void AddUpdateInvoice_Click(object sender, RoutedEventArgs e)
         {
-            if (InvoiceCarComboBox.SelectedItem == null || !TryParseDate(InvoiceDateTextBox.Text, out DateTime date) || string.IsNullOrWhiteSpace(AmountTextBox.Text) || !decimal.TryParse(AmountTextBox.Text, out decimal amount) || amount < 0)
+            if (InvoiceCarComboBox.SelectedItem == null)
             {
-                MessageBox.Show("الرجاء ملء الحقول المطلوبة (السيارة، تاريخ صحيح، ومبلغ صحيح).");
+                MessageBox.Show("الرجاء اختيار السيارة.");
                 return;
             }
+
+            if (!TryParseDate(InvoiceDateTextBox.Text, out DateTime date, true)) return;
             if (!FiscalYearHelper.ValidateDateInSelectedYear(date, YearComboBox, "تاريخ فاتورة الوقود")) return;
+
+            if (!decimal.TryParse(AmountTextBox.Text, out decimal amount) || amount <= 0)
+            {
+                MessageBox.Show("الرجاء إدخال مبلغ صحيح أكبر من صفر.");
+                return;
+            }
 
             var invoice = new FuelInvoice
             {
                 CarNumber = InvoiceCarComboBox.SelectedItem.ToString(),
-                InvoiceNumber = InvoiceNumberTextBox.Text,
+                InvoiceNumber = (InvoiceNumberTextBox.Text ?? string.Empty).Trim(),
                 Date = date,
                 Amount = amount,
                 IsPaid = IsPaidCheckBox.IsChecked ?? false,
@@ -166,27 +214,29 @@ namespace AccountingApp
 
         private void EditInvoice_Click(object sender, RoutedEventArgs e)
         {
-            if ((sender as Button)?.DataContext is FuelInvoice selected)
-            {
-                _invoiceToEdit = selected;
-                InvoiceCarComboBox.SelectedItem = selected.CarNumber;
-                InvoiceNumberTextBox.Text = selected.InvoiceNumber;
-                InvoiceDateTextBox.Text = selected.Date.ToString(AppSettings.DateFormat);
-                AmountTextBox.Text = selected.Amount.ToString(CultureInfo.InvariantCulture);
-                IsPaidCheckBox.IsChecked = selected.IsPaid;
-                AddUpdateButton.Content = "تحديث الفاتورة";
-            }
+            if (!((sender as Button)?.DataContext is FuelInvoice selected)) return;
+
+            _invoiceToEdit = selected;
+            InvoiceCarComboBox.SelectedItem = selected.CarNumber;
+            InvoiceNumberTextBox.Text = selected.InvoiceNumber;
+            InvoiceDateTextBox.Text = selected.Date.ToString(AppSettings.DateFormat);
+            AmountTextBox.Text = selected.Amount.ToString("0.###");
+            IsPaidCheckBox.IsChecked = selected.IsPaid;
+            AddUpdateButton.Content = "تحديث الفاتورة";
         }
 
         private void DeleteInvoice_Click(object sender, RoutedEventArgs e)
         {
-            if ((sender as Button)?.DataContext is FuelInvoice selected)
+            if (!((sender as Button)?.DataContext is FuelInvoice selected)) return;
+
+            if (MessageBox.Show(
+                "هل أنت متأكد من حذف هذه الفاتورة؟ سيؤثر الحذف على الرصيد غير المدفوع والتقارير.",
+                "تأكيد الحذف",
+                MessageBoxButton.YesNo,
+                MessageBoxImage.Warning) == MessageBoxResult.Yes)
             {
-                if (MessageBox.Show("هل أنت متأكد من حذف هذه الفاتورة؟", "تأكيد الحذف", MessageBoxButton.YesNo, MessageBoxImage.Warning) == MessageBoxResult.Yes)
-                {
-                    DeleteFuelInvoice(selected.Id);
-                    RefreshFuelInvoicesGrid();
-                }
+                DeleteFuelInvoice(selected.Id);
+                RefreshFuelInvoicesGrid();
             }
         }
 
@@ -203,7 +253,6 @@ namespace AccountingApp
 
         private void CalculateTotal_Click(object sender, RoutedEventArgs e)
         {
-            // نستخدم showMessage: false لمنع ظهور رسالتين متتاليتين ولتحديد الخطأ بدقة
             if (!TryParseDate(SummaryFromDateTextBox.Text, out DateTime fromDate, false))
             {
                 MessageBox.Show("تاريخ البداية في ملخص الاستهلاك غير صحيح.", "خطأ في التاريخ", MessageBoxButton.OK, MessageBoxImage.Warning);
@@ -216,8 +265,25 @@ namespace AccountingApp
                 return;
             }
 
+            if (!FiscalYearHelper.ValidateDateInSelectedYear(fromDate, YearComboBox, "تاريخ بداية الملخص") ||
+                !FiscalYearHelper.ValidateDateInSelectedYear(toDate, YearComboBox, "تاريخ نهاية الملخص"))
+            {
+                return;
+            }
+
+            if (fromDate.Date > toDate.Date)
+            {
+                MessageBox.Show(
+                    "تاريخ بداية الملخص يجب أن يكون قبل أو مساوياً لتاريخ النهاية.",
+                    "نطاق تاريخ غير صحيح",
+                    MessageBoxButton.OK,
+                    MessageBoxImage.Warning);
+                return;
+            }
+
             string car = SummaryCarComboBox.SelectedItem as string;
             if (car == "الكل") car = null;
+
             decimal total = GetTotalForDateRange(car, fromDate, toDate);
             TotalAmountTextBlock.Text = total.ToString("N3");
         }
@@ -225,7 +291,12 @@ namespace AccountingApp
         private void Print_Click(object sender, RoutedEventArgs e)
         {
             var invoices = FuelInvoicesDataGrid.ItemsSource as List<FuelInvoice>;
-            if (invoices == null || !invoices.Any()) { MessageBox.Show("لا توجد فواتير للطباعة."); return; }
+            if (invoices == null || !invoices.Any())
+            {
+                MessageBox.Show("لا توجد فواتير للطباعة.");
+                return;
+            }
+
             PrintDialog printDialog = new PrintDialog();
             if (printDialog.ShowDialog() == true)
             {
@@ -244,13 +315,17 @@ namespace AccountingApp
             using (var conn = new SqliteConnection(_connectionString))
             {
                 conn.Open();
-                var sql = "SELECT Id, CarNumber FROM Cars ORDER BY CarNumber";
+                const string sql = "SELECT Id, CarNumber FROM Cars ORDER BY CarNumber";
                 using (var cmd = new SqliteCommand(sql, conn))
                 using (var reader = cmd.ExecuteReader())
                 {
                     while (reader.Read())
                     {
-                        cars.Add(new Car { Id = reader.GetInt32(0), CarNumber = reader.GetString(1) });
+                        cars.Add(new Car
+                        {
+                            Id = reader.GetInt32(0),
+                            CarNumber = reader.GetString(1)
+                        });
                     }
                 }
             }
@@ -264,7 +339,7 @@ namespace AccountingApp
                 using (var conn = new SqliteConnection(_connectionString))
                 {
                     conn.Open();
-                    var sql = "INSERT INTO Cars (CarNumber) VALUES (@CarNumber)";
+                    const string sql = "INSERT INTO Cars (CarNumber) VALUES (@CarNumber)";
                     using (var cmd = new SqliteCommand(sql, conn))
                     {
                         cmd.Parameters.AddWithValue("@CarNumber", car.CarNumber);
@@ -279,75 +354,94 @@ namespace AccountingApp
             }
         }
 
+        private bool HasFuelInvoices(string carNumber)
+        {
+            using (var conn = new SqliteConnection(_connectionString))
+            {
+                conn.Open();
+                using (var cmd = new SqliteCommand("SELECT EXISTS(SELECT 1 FROM FuelInvoices WHERE CarNumber = @CarNumber LIMIT 1)", conn))
+                {
+                    cmd.Parameters.AddWithValue("@CarNumber", carNumber);
+                    return Convert.ToInt32(cmd.ExecuteScalar()) == 1;
+                }
+            }
+        }
+
         private void DeleteCar(int id)
         {
             using (var conn = new SqliteConnection(_connectionString))
             {
                 conn.Open();
-                using (var transaction = conn.BeginTransaction())
+                using (var cmd = new SqliteCommand("DELETE FROM Cars WHERE Id = @Id", conn))
                 {
-                    var cmd1 = conn.CreateCommand();
-                    cmd1.Transaction = transaction;
-                    cmd1.CommandText = "DELETE FROM FuelInvoices WHERE CarNumber = (SELECT CarNumber FROM Cars WHERE Id = @Id)";
-                    cmd1.Parameters.AddWithValue("@Id", id);
-                    cmd1.ExecuteNonQuery();
-
-                    var cmd2 = conn.CreateCommand();
-                    cmd2.Transaction = transaction;
-                    cmd2.CommandText = "DELETE FROM Cars WHERE Id = @Id";
-                    cmd2.Parameters.AddWithValue("@Id", id);
-                    cmd2.ExecuteNonQuery();
-
-                    transaction.Commit();
+                    cmd.Parameters.AddWithValue("@Id", id);
+                    cmd.ExecuteNonQuery();
                 }
             }
         }
 
         private List<FuelInvoice> LoadFuelInvoices(string carFilter, DateTime? fromDate, DateTime? toDate, bool unpaidOnly)
         {
-            var invoices = new List<FuelInvoice>();
+            var visibleInvoices = new List<FuelInvoice>();
+            int year = FiscalYearHelper.GetSelectedYear(YearComboBox);
+
             using (var conn = new SqliteConnection(_connectionString))
             {
                 conn.Open();
-                var sql = new StringBuilder("SELECT Id, CarNumber, InvoiceNumber, Date, Amount, IsPaid, Year FROM FuelInvoices WHERE Year = @Year");
-                var parameters = new Dictionary<string, object> { { "@Year", FiscalYearHelper.GetSelectedYear(YearComboBox) } };
-                if (!string.IsNullOrEmpty(carFilter)) { sql.Append(" AND CarNumber = @CarNumber"); parameters.Add("@CarNumber", carFilter); }
-                if (fromDate.HasValue) { sql.Append(" AND date(Date) >= date(@FromDate)"); parameters.Add("@FromDate", fromDate.Value.ToString("yyyy-MM-dd")); }
-                if (toDate.HasValue) { sql.Append(" AND date(Date) <= date(@ToDate)"); parameters.Add("@ToDate", toDate.Value.ToString("yyyy-MM-dd")); }
-                if (unpaidOnly) { sql.Append(" AND IsPaid = 0"); }
-                sql.Append(" ORDER BY CarNumber, Date");
+                const string sql = @"SELECT Id, CarNumber, InvoiceNumber, Date, Amount, IsPaid, Year
+                                     FROM FuelInvoices
+                                     WHERE Year = @Year
+                                     ORDER BY CarNumber, date(Date), Id";
 
-                using (var cmd = new SqliteCommand(sql.ToString(), conn))
+                using (var cmd = new SqliteCommand(sql, conn))
                 {
-                    foreach (var p in parameters) cmd.Parameters.AddWithValue(p.Key, p.Value);
+                    cmd.Parameters.AddWithValue("@Year", year);
                     using (var reader = cmd.ExecuteReader())
                     {
+                        string currentCar = null;
+                        decimal runningUnpaid = 0;
+
                         while (reader.Read())
                         {
-                            invoices.Add(new FuelInvoice
+                            var invoice = new FuelInvoice
                             {
                                 Id = reader.GetInt32(0),
                                 CarNumber = reader.GetString(1),
-                                InvoiceNumber = reader.IsDBNull(2) ? "" : reader.GetString(2),
-                                Date = DateTime.Parse(reader.GetString(3)),
-                                Amount = Convert.ToDecimal(reader.GetDouble(4)),
-                                IsPaid = reader.GetInt32(5) == 1,
+                                InvoiceNumber = reader.IsDBNull(2) ? string.Empty : reader.GetString(2),
+                                Date = ParseStoredDate(reader.GetString(3)),
+                                Amount = reader.IsDBNull(4) ? 0 : Convert.ToDecimal(reader.GetDouble(4)),
+                                IsPaid = !reader.IsDBNull(5) && reader.GetInt32(5) == 1,
                                 Year = reader.GetInt32(6)
-                            });
+                            };
+
+                            if (!string.Equals(currentCar, invoice.CarNumber, StringComparison.Ordinal))
+                            {
+                                currentCar = invoice.CarNumber;
+                                runningUnpaid = 0;
+                            }
+
+                            if (!invoice.IsPaid)
+                            {
+                                runningUnpaid += invoice.Amount;
+                            }
+                            invoice.AccumulatedBalance = runningUnpaid;
+
+                            bool matchesCar = string.IsNullOrWhiteSpace(carFilter) ||
+                                string.Equals(invoice.CarNumber, carFilter, StringComparison.CurrentCultureIgnoreCase);
+                            bool matchesFrom = !fromDate.HasValue || invoice.Date.Date >= fromDate.Value.Date;
+                            bool matchesTo = !toDate.HasValue || invoice.Date.Date <= toDate.Value.Date;
+                            bool matchesPaymentState = !unpaidOnly || !invoice.IsPaid;
+
+                            if (matchesCar && matchesFrom && matchesTo && matchesPaymentState)
+                            {
+                                visibleInvoices.Add(invoice);
+                            }
                         }
                     }
                 }
             }
 
-            decimal runningTotal = 0;
-            string currentCar = null;
-            foreach (var invoice in invoices)
-            {
-                if (invoice.CarNumber != currentCar) { runningTotal = 0; currentCar = invoice.CarNumber; }
-                if (!invoice.IsPaid) { runningTotal += invoice.Amount; }
-                invoice.AccumulatedBalance = runningTotal;
-            }
-            return invoices;
+            return visibleInvoices;
         }
 
         private void SaveFuelInvoice(FuelInvoice invoice)
@@ -355,7 +449,7 @@ namespace AccountingApp
             using (var conn = new SqliteConnection(_connectionString))
             {
                 conn.Open();
-                var sql = "INSERT INTO FuelInvoices (CarNumber, InvoiceNumber, Date, Amount, IsPaid, Year) VALUES (@CarNumber, @InvoiceNumber, @Date, @Amount, @IsPaid, @Year)";
+                const string sql = "INSERT INTO FuelInvoices (CarNumber, InvoiceNumber, Date, Amount, IsPaid, Year) VALUES (@CarNumber, @InvoiceNumber, @Date, @Amount, @IsPaid, @Year)";
                 using (var cmd = new SqliteCommand(sql, conn))
                 {
                     cmd.Parameters.AddWithValue("@CarNumber", invoice.CarNumber);
@@ -374,7 +468,7 @@ namespace AccountingApp
             using (var conn = new SqliteConnection(_connectionString))
             {
                 conn.Open();
-                var sql = "UPDATE FuelInvoices SET CarNumber = @CarNumber, InvoiceNumber = @InvoiceNumber, Date = @Date, Amount = @Amount, IsPaid = @IsPaid, Year = @Year WHERE Id = @Id";
+                const string sql = "UPDATE FuelInvoices SET CarNumber = @CarNumber, InvoiceNumber = @InvoiceNumber, Date = @Date, Amount = @Amount, IsPaid = @IsPaid, Year = @Year WHERE Id = @Id";
                 using (var cmd = new SqliteCommand(sql, conn))
                 {
                     cmd.Parameters.AddWithValue("@Id", invoice.Id);
@@ -394,8 +488,7 @@ namespace AccountingApp
             using (var conn = new SqliteConnection(_connectionString))
             {
                 conn.Open();
-                var sql = "DELETE FROM FuelInvoices WHERE Id = @Id";
-                using (var cmd = new SqliteCommand(sql, conn))
+                using (var cmd = new SqliteCommand("DELETE FROM FuelInvoices WHERE Id = @Id", conn))
                 {
                     cmd.Parameters.AddWithValue("@Id", id);
                     cmd.ExecuteNonQuery();
@@ -408,40 +501,68 @@ namespace AccountingApp
             using (var conn = new SqliteConnection(_connectionString))
             {
                 conn.Open();
-                var sql = new StringBuilder("SELECT SUM(Amount) FROM FuelInvoices WHERE Year = @Year AND date(Date) BETWEEN @FromDate AND @ToDate");
-                var cmd = new SqliteCommand();
-                cmd.Parameters.AddWithValue("@Year", FiscalYearHelper.GetSelectedYear(YearComboBox));
-                cmd.Parameters.AddWithValue("@FromDate", fromDate.ToString("yyyy-MM-dd"));
-                cmd.Parameters.AddWithValue("@ToDate", toDate.ToString("yyyy-MM-dd"));
-
-                if (!string.IsNullOrEmpty(carNumber))
+                var sql = new StringBuilder("SELECT COALESCE(SUM(Amount), 0) FROM FuelInvoices WHERE Year = @Year AND date(Date) BETWEEN date(@FromDate) AND date(@ToDate)");
+                using (var cmd = new SqliteCommand())
                 {
-                    sql.Append(" AND CarNumber = @CarNumber");
-                    cmd.Parameters.AddWithValue("@CarNumber", carNumber);
-                }
+                    cmd.Parameters.AddWithValue("@Year", FiscalYearHelper.GetSelectedYear(YearComboBox));
+                    cmd.Parameters.AddWithValue("@FromDate", fromDate.ToString("yyyy-MM-dd"));
+                    cmd.Parameters.AddWithValue("@ToDate", toDate.ToString("yyyy-MM-dd"));
 
-                cmd.Connection = conn;
-                cmd.CommandText = sql.ToString();
-                var result = cmd.ExecuteScalar();
-                if (result != DBNull.Value && result != null)
-                {
-                    return Convert.ToDecimal(result);
+                    if (!string.IsNullOrEmpty(carNumber))
+                    {
+                        sql.Append(" AND CarNumber = @CarNumber");
+                        cmd.Parameters.AddWithValue("@CarNumber", carNumber);
+                    }
+
+                    cmd.Connection = conn;
+                    cmd.CommandText = sql.ToString();
+                    var result = cmd.ExecuteScalar();
+                    return result == null || result == DBNull.Value ? 0 : Convert.ToDecimal(result);
                 }
             }
-            return 0;
+        }
+
+        private static DateTime ParseStoredDate(string value)
+        {
+            if (DateTime.TryParseExact(value, "yyyy-MM-dd", CultureInfo.InvariantCulture, DateTimeStyles.None, out DateTime date))
+            {
+                return date;
+            }
+
+            return DateTime.Parse(value, CultureInfo.CurrentCulture);
         }
         #endregion
 
         #region Print Helper & Others
         private bool TryParseDate(string dateText, out DateTime date, bool showMessage = true)
         {
-            // استخراج السنة المحددة من ComboBox
             int? defaultYear = null;
             if (YearComboBox.SelectedItem != null && int.TryParse(YearComboBox.SelectedItem.ToString(), out int year))
             {
                 defaultYear = year;
             }
+
             return DatabaseService.TryParseDate(dateText, out date, showMessage, defaultYear);
+        }
+
+        private bool TryParseOptionalDate(string text, string fieldName, out DateTime? date)
+        {
+            date = null;
+            if (string.IsNullOrWhiteSpace(text)) return true;
+
+            if (!TryParseDate(text, out DateTime parsed, false))
+            {
+                MessageBox.Show($"{fieldName} غير صحيح.", "خطأ في التاريخ", MessageBoxButton.OK, MessageBoxImage.Warning);
+                return false;
+            }
+
+            if (!FiscalYearHelper.ValidateDateInSelectedYear(parsed, YearComboBox, fieldName))
+            {
+                return false;
+            }
+
+            date = parsed;
+            return true;
         }
 
         private void ResetDateFieldsToSelectedYear()
@@ -452,34 +573,33 @@ namespace AccountingApp
 
         private void DateInput_KeyDown(object sender, KeyEventArgs e)
         {
-            if (e.Key == Key.Enter)
-            {
-                TextBox txt = sender as TextBox;
-                if (txt != null && !string.IsNullOrWhiteSpace(txt.Text))
-                {
-                    // استخدام TryParseDate المحسّنة مع السنة من ComboBox
-                    if (TryParseDate(txt.Text, out DateTime parsedDate, false))
-                    {
-                        txt.Text = parsedDate.ToString(AppSettings.DateFormat);
-                    }
-                    else
-                    {
-                        return; // لا تنقل التركيز إذا كان التاريخ غير صحيح
-                    }
+            if (e.Key != Key.Enter) return;
 
-                    // نقل التركيز للحقل التالي
-                    e.Handled = true;
-                    TraversalRequest request = new TraversalRequest(FocusNavigationDirection.Next);
-                    request.Wrapped = true;
-                    ((UIElement)sender).MoveFocus(request);
-                }
+            TextBox txt = sender as TextBox;
+            if (txt != null && !string.IsNullOrWhiteSpace(txt.Text))
+            {
+                if (!TryParseDate(txt.Text, out DateTime parsedDate, false)) return;
+                txt.Text = parsedDate.ToString(AppSettings.DateFormat);
             }
+
+            MoveFocusOnEnter(sender, e);
         }
 
         private FlowDocument CreateFuelPrintDocument(List<FuelInvoice> invoices)
         {
-            var doc = new FlowDocument { FlowDirection = FlowDirection.RightToLeft, FontFamily = new FontFamily("Arial") };
-            doc.Blocks.Add(new Paragraph(new Run($"تقرير فواتير الوقود للسنة المالية {YearComboBox.SelectedItem}")) { FontSize = 20, FontWeight = FontWeights.Bold, TextAlignment = TextAlignment.Center, Margin = new Thickness(0, 0, 0, 20) });
+            var doc = new FlowDocument
+            {
+                FlowDirection = FlowDirection.RightToLeft,
+                FontFamily = new FontFamily("Arial")
+            };
+
+            doc.Blocks.Add(new Paragraph(new Run($"تقرير فواتير الوقود للسنة المالية {YearComboBox.SelectedItem}"))
+            {
+                FontSize = 20,
+                FontWeight = FontWeights.Bold,
+                TextAlignment = TextAlignment.Center,
+                Margin = new Thickness(0, 0, 0, 20)
+            });
 
             var table = new Table { CellSpacing = 0 };
             doc.Blocks.Add(table);
@@ -494,7 +614,7 @@ namespace AccountingApp
             headerRow.Cells.Add(new TableCell(new Paragraph(new Run("التاريخ"))) { Padding = new Thickness(5) });
             headerRow.Cells.Add(new TableCell(new Paragraph(new Run("المبلغ"))) { Padding = new Thickness(5) });
             headerRow.Cells.Add(new TableCell(new Paragraph(new Run("تم الدفع"))) { Padding = new Thickness(5) });
-            headerRow.Cells.Add(new TableCell(new Paragraph(new Run("الرصيد المتراكم"))) { Padding = new Thickness(5) });
+            headerRow.Cells.Add(new TableCell(new Paragraph(new Run("الرصيد غير المدفوع المتراكم"))) { Padding = new Thickness(5) });
 
             var dataGroup = new TableRowGroup();
             table.RowGroups.Add(dataGroup);
@@ -509,49 +629,14 @@ namespace AccountingApp
                 dataRow.Cells.Add(new TableCell(new Paragraph(new Run(item.IsPaid ? "نعم" : "لا"))) { Padding = new Thickness(5), BorderBrush = Brushes.Gainsboro, BorderThickness = new Thickness(0, 0, 0, 1) });
                 dataRow.Cells.Add(new TableCell(new Paragraph(new Run(item.AccumulatedBalance.ToString("N3")))) { Padding = new Thickness(5), BorderBrush = Brushes.Gainsboro, BorderThickness = new Thickness(0, 0, 0, 1) });
             }
+
             return doc;
         }
 
-        // --- هذا هو الجزء الجديد لإكمال التاريخ ---
         private void InvoiceDate_KeyDown(object sender, KeyEventArgs e)
         {
-            if (e.Key == Key.Enter)
-            {
-                TextBox txt = sender as TextBox;
-                if (txt != null && !string.IsNullOrWhiteSpace(txt.Text))
-                {
-                    // محاولة إكمال التاريخ إذا كان بصيغة يوم/شهر فقط
-                    string[] parts = txt.Text.Split('/', '-');
-                    if (parts.Length == 2)
-                    {
-                        if (int.TryParse(parts[0], out int day) && int.TryParse(parts[1], out int month))
-                        {
-                            try
-                            {
-                                int year = int.Parse(YearComboBox.SelectedItem.ToString());
-                                // التحقق من صحة التاريخ
-                                int daysInMonth = DateTime.DaysInMonth(year, month);
-                                if (day >= 1 && day <= daysInMonth && month >= 1 && month <= 12)
-                                {
-                                    DateTime date = new DateTime(year, month, day);
-                                    txt.Text = date.ToString(AppSettings.DateFormat);
-                                }
-                                else
-                                {
-                                    MessageBox.Show($"التاريخ غير صحيح: شهر {month} لا يحتوي على {day} يوم.\nعدد أيام هذا الشهر هو {daysInMonth} يوم.", "خطأ في التاريخ", MessageBoxButton.OK, MessageBoxImage.Warning);
-                                }
-                            }
-                            catch (Exception ex)
-                            {
-                                MessageBox.Show("التاريخ غير صحيح: " + ex.Message, "خطأ", MessageBoxButton.OK, MessageBoxImage.Error);
-                            }
-                        }
-                    }
-                }
-                MoveFocusOnEnter(sender, e);
-            }
+            DateInput_KeyDown(sender, e);
         }
-        // ----------------------------------------
 
         public void MoveFocusOnEnter(object sender, KeyEventArgs e)
         {
