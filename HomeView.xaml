@@ -9,7 +9,7 @@
             <Setter Property="Background" Value="White"/>
             <Setter Property="CornerRadius" Value="8"/>
             <Setter Property="Padding" Value="20"/>
-            <Setter Property="Margin" Value="10"/>
+            <Setter Property="Margin" Value="8"/>
             <Setter Property="Effect">
                 <Setter.Value>
                     <DropShadowEffect ShadowDepth="1" Color="#000000" Opacity="0.05" BlurRadius="10"/>
@@ -17,20 +17,32 @@
             </Setter>
         </Style>
         <Style TargetType="TextBlock" x:Key="TitleStyle">
-            <Setter Property="FontSize" Value="22"/>
+            <Setter Property="FontSize" Value="20"/>
             <Setter Property="FontWeight" Value="SemiBold"/>
             <Setter Property="Foreground" Value="#4A5568"/>
         </Style>
         <Style TargetType="TextBlock" x:Key="AmountStyle">
-            <Setter Property="FontSize" Value="36"/>
+            <Setter Property="FontSize" Value="32"/>
             <Setter Property="FontWeight" Value="Bold"/>
+            <Setter Property="HorizontalAlignment" Value="Center"/>
+        </Style>
+        <Style TargetType="TextBlock" x:Key="SmallCardTitleStyle">
+            <Setter Property="FontSize" Value="14"/>
+            <Setter Property="FontWeight" Value="SemiBold"/>
+            <Setter Property="Foreground" Value="#718096"/>
+            <Setter Property="HorizontalAlignment" Value="Center"/>
+            <Setter Property="TextAlignment" Value="Center"/>
+        </Style>
+        <Style TargetType="TextBlock" x:Key="SmallCardAmountStyle">
+            <Setter Property="FontSize" Value="22"/>
+            <Setter Property="FontWeight" Value="Bold"/>
+            <Setter Property="Foreground" Value="#2D3748"/>
             <Setter Property="HorizontalAlignment" Value="Center"/>
         </Style>
     </UserControl.Resources>
 
-    <Grid>
-        <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center">
-
+    <ScrollViewer VerticalScrollBarVisibility="Auto">
+        <StackPanel Margin="20" HorizontalAlignment="Center">
             <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Margin="0,0,0,15">
                 <TextBlock Text="الملخص المالي للسنة:" FontSize="28" FontWeight="Bold" Foreground="#2D3748" VerticalAlignment="Center"/>
                 <ComboBox x:Name="YearComboBox" Width="100" Height="32" FontSize="16" VerticalAlignment="Center" Margin="20,0,0,0" SelectionChanged="YearComboBox_SelectionChanged"/>
@@ -49,8 +61,6 @@
                        HorizontalAlignment="Stretch"/>
 
             <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
-
-                <!-- بطاقة رصيد الإيرادات -->
                 <Border Style="{StaticResource CardStyle}" MinWidth="250">
                     <StackPanel>
                         <TextBlock x:Name="RevenuesBalanceCardTitle" Text="رصيد الإيرادات" Style="{StaticResource TitleStyle}" HorizontalAlignment="Center"/>
@@ -59,7 +69,6 @@
                     </StackPanel>
                 </Border>
 
-                <!-- بطاقة رصيد صندوق الفواتير -->
                 <Border Style="{StaticResource CardStyle}" MinWidth="250">
                     <StackPanel>
                         <TextBlock x:Name="InvoicesBalanceCardTitle" Text="رصيد صندوق الفواتير" Style="{StaticResource TitleStyle}" HorizontalAlignment="Center"/>
@@ -68,7 +77,6 @@
                     </StackPanel>
                 </Border>
 
-                <!-- بطاقة رصيد الصندوق -->
                 <Border Style="{StaticResource CardStyle}" MinWidth="300" Background="#3182CE">
                     <StackPanel>
                         <TextBlock Text="رصيد الصندوق" Style="{StaticResource TitleStyle}" HorizontalAlignment="Center" Foreground="White"/>
@@ -77,6 +85,53 @@
                     </StackPanel>
                 </Border>
             </StackPanel>
+
+            <TextBlock Text="تفاصيل حركة السنة المالية" FontSize="18" FontWeight="Bold" Foreground="#4A5568" Margin="0,20,0,8" HorizontalAlignment="Center"/>
+
+            <WrapPanel HorizontalAlignment="Center" MaxWidth="1150">
+                <Border Style="{StaticResource CardStyle}" Width="210" MinHeight="105">
+                    <StackPanel>
+                        <TextBlock Text="إجمالي سندات القبض" Style="{StaticResource SmallCardTitleStyle}"/>
+                        <TextBlock x:Name="TotalReceiptsSummaryText" Text="0.000" Style="{StaticResource SmallCardAmountStyle}" Margin="0,8,0,0"/>
+                    </StackPanel>
+                </Border>
+                <Border Style="{StaticResource CardStyle}" Width="210" MinHeight="105">
+                    <StackPanel>
+                        <TextBlock Text="إجمالي الإيداعات" Style="{StaticResource SmallCardTitleStyle}"/>
+                        <TextBlock x:Name="TotalDepositsSummaryText" Text="0.000" Style="{StaticResource SmallCardAmountStyle}" Margin="0,8,0,0"/>
+                    </StackPanel>
+                </Border>
+                <Border Style="{StaticResource CardStyle}" Width="210" MinHeight="105">
+                    <StackPanel>
+                        <TextBlock Text="تغذية صندوق الفواتير" Style="{StaticResource SmallCardTitleStyle}"/>
+                        <TextBlock x:Name="FundAdditionsSummaryText" Text="0.000" Style="{StaticResource SmallCardAmountStyle}" Margin="0,8,0,0"/>
+                    </StackPanel>
+                </Border>
+                <Border Style="{StaticResource CardStyle}" Width="210" MinHeight="105">
+                    <StackPanel>
+                        <TextBlock Text="صرف الفواتير" Style="{StaticResource SmallCardTitleStyle}"/>
+                        <TextBlock x:Name="InvoiceExpensesSummaryText" Text="0.000" Style="{StaticResource SmallCardAmountStyle}" Margin="0,8,0,0"/>
+                    </StackPanel>
+                </Border>
+                <Border Style="{StaticResource CardStyle}" Width="210" MinHeight="105">
+                    <StackPanel>
+                        <TextBlock Text="إجمالي مبالغ المساعدات" Style="{StaticResource SmallCardTitleStyle}"/>
+                        <TextBlock x:Name="AidsSummaryText" Text="0.000" Style="{StaticResource SmallCardAmountStyle}" Margin="0,8,0,0"/>
+                    </StackPanel>
+                </Border>
+                <Border Style="{StaticResource CardStyle}" Width="210" MinHeight="105">
+                    <StackPanel>
+                        <TextBlock Text="إجمالي فواتير الوقود" Style="{StaticResource SmallCardTitleStyle}"/>
+                        <TextBlock x:Name="FuelSummaryText" Text="0.000" Style="{StaticResource SmallCardAmountStyle}" Margin="0,8,0,0"/>
+                    </StackPanel>
+                </Border>
+                <Border Style="{StaticResource CardStyle}" Width="210" MinHeight="105">
+                    <StackPanel>
+                        <TextBlock Text="الوقود غير المدفوع" Style="{StaticResource SmallCardTitleStyle}"/>
+                        <TextBlock x:Name="UnpaidFuelSummaryText" Text="0.000" Style="{StaticResource SmallCardAmountStyle}" Foreground="#C53030" Margin="0,8,0,0"/>
+                    </StackPanel>
+                </Border>
+            </WrapPanel>
         </StackPanel>
-    </Grid>
+    </ScrollViewer>
 </UserControl>
