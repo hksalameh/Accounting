@@ -7,7 +7,11 @@ namespace AccountingApp
     public static class FiscalYearHelper
     {
         public const int MinYear = 2020;
-        public const int MaxYear = 2035;
+
+        // نبقي 2035 كحد أدنى للتوافق مع السلوك القديم، ثم نمد القائمة تلقائياً
+        // لعشر سنوات بعد السنة الحالية حتى لا تحتاج لتعديل الكود مستقبلاً.
+        public static int MaxYear => Math.Max(2035, DateTime.Now.Year + 10);
+
         public static int CurrentYear { get; private set; } = DateTime.Now.Year;
 
         public static void PopulateYears(ComboBox comboBox)
@@ -23,8 +27,19 @@ namespace AccountingApp
         public static void SelectCurrentYear(ComboBox comboBox)
         {
             if (comboBox == null) return;
+
             PopulateYears(comboBox);
-            comboBox.SelectedItem = CurrentYear.ToString();
+
+            string preferredYear = CurrentYear.ToString();
+            if (comboBox.Items.Contains(preferredYear))
+            {
+                comboBox.SelectedItem = preferredYear;
+            }
+            else if (comboBox.Items.Count > 0)
+            {
+                comboBox.SelectedIndex = comboBox.Items.Count - 1;
+                GetSelectedYear(comboBox);
+            }
         }
 
         public static int GetSelectedYear(ComboBox comboBox)
