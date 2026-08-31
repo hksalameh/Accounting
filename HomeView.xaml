@@ -31,10 +31,22 @@
     <Grid>
         <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center">
 
-            <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Margin="0,0,0,30">
+            <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Margin="0,0,0,15">
                 <TextBlock Text="الملخص المالي للسنة:" FontSize="28" FontWeight="Bold" Foreground="#2D3748" VerticalAlignment="Center"/>
                 <ComboBox x:Name="YearComboBox" Width="100" Height="32" FontSize="16" VerticalAlignment="Center" Margin="20,0,0,0" SelectionChanged="YearComboBox_SelectionChanged"/>
             </StackPanel>
+
+            <TextBlock x:Name="BalanceErrorText"
+                       Text="تعذر قراءة الأرصدة من قاعدة البيانات."
+                       Visibility="Collapsed"
+                       Foreground="#C53030"
+                       Background="#FFF5F5"
+                       FontWeight="SemiBold"
+                       FontSize="14"
+                       Padding="12,8"
+                       Margin="10,0,10,15"
+                       TextAlignment="Center"
+                       HorizontalAlignment="Stretch"/>
 
             <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
 
@@ -47,10 +59,10 @@
                     </StackPanel>
                 </Border>
 
-                <!-- بطاقة رصيد الفواتير -->
+                <!-- بطاقة رصيد صندوق الفواتير -->
                 <Border Style="{StaticResource CardStyle}" MinWidth="250">
                     <StackPanel>
-                        <TextBlock x:Name="InvoicesBalanceCardTitle" Text="رصيد الفواتير" Style="{StaticResource TitleStyle}" HorizontalAlignment="Center"/>
+                        <TextBlock x:Name="InvoicesBalanceCardTitle" Text="رصيد صندوق الفواتير" Style="{StaticResource TitleStyle}" HorizontalAlignment="Center"/>
                         <Separator Margin="0,10"/>
                         <TextBlock x:Name="TotalExpensesText" Text="0.000" Style="{StaticResource AmountStyle}" Foreground="#4A5568"/>
                     </StackPanel>
