@@ -13,22 +13,26 @@
         </Grid.ColumnDefinitions>
 
         <Border Grid.Column="0" Background="#2D3748" Padding="16">
-            <StackPanel>
-                <Image Source="/الشعار الجديد.png"
-                       Width="130"
-                       Margin="0,0,0,24"/>
-                <TextBlock Text="برنامج المحاسبة" Foreground="White" FontSize="20" FontWeight="SemiBold" Margin="0 0 0 20" TextAlignment="Center"/>
-                <Button Content="الرئيسية" Margin="0 5" Height="40" Click="Home_Click"/>
-                <Button Content="الفواتير" Margin="0 5" Height="40" Click="Invoices_Click"/>
-                <Button Content="الإيرادات" Margin="0 5" Height="40" Click="Revenues_Click"/>
-                <Button Content="المساعدات" Margin="0 5" Height="40" Click="Aids_Click"/>
-                <Button Content="الوقود" Margin="0 5" Height="40" Click="Fuel_Click"/>
-                <Separator Margin="0 10"/>
-                <Button Content="نسخة احتياطية" Margin="0 5" Height="40" Background="#4A5568" Foreground="White" Click="Backup_Click"/>
-                <Button Content="استعادة نسخة" Margin="0 5" Height="40" Background="#4A5568" Foreground="White" Click="Restore_Click"/>
-                <Separator Margin="0 10"/>
-                <Button Content="خروج" Margin="0 5" Height="40" Background="DarkRed" Foreground="White" Click="Exit_Click"/>
-            </StackPanel>
+            <ScrollViewer VerticalScrollBarVisibility="Auto">
+                <StackPanel>
+                    <Image Source="/الشعار الجديد.png"
+                           Width="130"
+                           Margin="0,0,0,24"/>
+                    <TextBlock Text="برنامج المحاسبة" Foreground="White" FontSize="20" FontWeight="SemiBold" Margin="0 0 0 20" TextAlignment="Center"/>
+                    <Button Content="الرئيسية" Margin="0 5" Height="40" Click="Home_Click"/>
+                    <Button Content="الفواتير" Margin="0 5" Height="40" Click="Invoices_Click"/>
+                    <Button Content="الإيرادات" Margin="0 5" Height="40" Click="Revenues_Click"/>
+                    <Button Content="المساعدات" Margin="0 5" Height="40" Click="Aids_Click"/>
+                    <Button Content="الوقود" Margin="0 5" Height="40" Click="Fuel_Click"/>
+                    <Separator Margin="0 10"/>
+                    <Button Content="تصدير Excel" Margin="0 5" Height="40" Background="#2F855A" Foreground="White" Click="ExportExcel_Click"/>
+                    <Button Content="سجل التعديلات" Margin="0 5" Height="40" Background="#805AD5" Foreground="White" Click="AuditLog_Click"/>
+                    <Button Content="نسخة احتياطية" Margin="0 5" Height="40" Background="#4A5568" Foreground="White" Click="Backup_Click"/>
+                    <Button Content="استعادة نسخة" Margin="0 5" Height="40" Background="#4A5568" Foreground="White" Click="Restore_Click"/>
+                    <Separator Margin="0 10"/>
+                    <Button Content="خروج" Margin="0 5" Height="40" Background="DarkRed" Foreground="White" Click="Exit_Click"/>
+                </StackPanel>
+            </ScrollViewer>
         </Border>
 
         <Border x:Name="ContentArea" Grid.Column="1" Background="#F7FAFC" />
