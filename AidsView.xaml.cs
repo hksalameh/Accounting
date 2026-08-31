@@ -7,6 +7,7 @@ using System.Printing;
 using System.Text;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Data;
 using System.Windows.Documents;
 using System.Windows.Input;
 using System.Windows.Media;
@@ -16,7 +17,9 @@ namespace AccountingApp
     public partial class AidsView : UserControl
     {
         private readonly string _connectionString = DatabaseService.ConnectionString;
-        private AidEntry _aidToEdit = null;
+        private AidEntry _aidToEdit;
+        private TextBox _voucherNoTextBox;
+        private TextBox _searchVoucherNoTextBox;
 
         private readonly List<string> _projectNames = new List<string>
         {
@@ -38,6 +41,7 @@ namespace AccountingApp
         {
             InitializeComponent();
             DatabaseService.InitializeDatabase();
+            InitializeVoucherUi();
 
             for (int i = 0; i < _projectNames.Count && i < AidEntryTabControl.Items.Count; i++)
             {
@@ -45,6 +49,112 @@ namespace AccountingApp
             }
 
             PopulateComboBoxes();
+        }
+
+        private void InitializeVoucherUi()
+        {
+            InitializeVoucherEntryUi();
+            InitializeVoucherSearchUi();
+
+            if (!AidsDataGrid.Columns.Any(c => string.Equals(c.Header?.ToString(), "رقم السند", StringComparison.Ordinal)))
+            {
+                AidsDataGrid.Columns.Insert(1, new DataGridTextColumn
+                {
+                    Header = "رقم السند",
+                    Binding = new Binding(nameof(AidEntry.VoucherNo)),
+                    Width = new DataGridLength(110)
+                });
+            }
+        }
+
+        private void InitializeVoucherEntryUi()
+        {
+            var groupBox = AidEntryTabControl.Parent as GroupBox;
+            if (groupBox == null) return;
+
+            groupBox.Content = null;
+
+            var wrapper = new StackPanel();
+            var voucherRow = new Border
+            {
+                Background = new SolidColorBrush(Color.FromRgb(247, 250, 252)),
+                BorderBrush = new SolidColorBrush(Color.FromRgb(203, 213, 224)),
+                BorderThickness = new Thickness(1),
+                CornerRadius = new CornerRadius(6),
+                Padding = new Thickness(12, 8, 12, 8),
+                Margin = new Thickness(5, 5, 5, 10)
+            };
+
+            var row = new StackPanel { Orientation = Orientation.Horizontal };
+            row.Children.Add(new TextBlock
+            {
+                Text = "رقم السند:",
+                FontWeight = FontWeights.SemiBold,
+                VerticalAlignment = VerticalAlignment.Center,
+                Margin = new Thickness(0, 0, 10, 0)
+            });
+
+            _voucherNoTextBox = new TextBox
+            {
+                Width = 180,
+                Height = 28,
+                VerticalContentAlignment = VerticalAlignment.Center
+            };
+            _voucherNoTextBox.KeyDown += MoveFocusOnEnter;
+            row.Children.Add(_voucherNoTextBox);
+            row.Children.Add(new TextBlock
+            {
+                Text = "  مطلوب لكل إدخال جديد",
+                Foreground = Brushes.DimGray,
+                VerticalAlignment = VerticalAlignment.Center
+            });
+
+            voucherRow.Child = row;
+            wrapper.Children.Add(voucherRow);
+            wrapper.Children.Add(AidEntryTabControl);
+            groupBox.Content = wrapper;
+        }
+
+        private void InitializeVoucherSearchUi()
+        {
+            var searchGrid = SearchProjectComboBox.Parent as Grid;
+            var groupBox = searchGrid?.Parent as GroupBox;
+            if (searchGrid == null || groupBox == null) return;
+
+            groupBox.Content = null;
+            var wrapper = new StackPanel();
+            wrapper.Children.Add(searchGrid);
+
+            var row = new StackPanel
+            {
+                Orientation = Orientation.Horizontal,
+                Margin = new Thickness(0, 8, 0, 0)
+            };
+            row.Children.Add(new TextBlock
+            {
+                Text = "رقم السند:",
+                FontWeight = FontWeights.SemiBold,
+                VerticalAlignment = VerticalAlignment.Center,
+                Margin = new Thickness(0, 0, 10, 0)
+            });
+
+            _searchVoucherNoTextBox = new TextBox
+            {
+                Width = 180,
+                Height = 28,
+                VerticalContentAlignment = VerticalAlignment.Center
+            };
+            _searchVoucherNoTextBox.KeyDown += MoveFocusOnEnter;
+            row.Children.Add(_searchVoucherNoTextBox);
+            row.Children.Add(new TextBlock
+            {
+                Text = "  يمكن كتابة جزء من رقم السند ثم الضغط على بحث",
+                Foreground = Brushes.DimGray,
+                VerticalAlignment = VerticalAlignment.Center
+            });
+
+            wrapper.Children.Add(row);
+            groupBox.Content = wrapper;
         }
 
         private void PopulateComboBoxes()
@@ -83,6 +193,7 @@ namespace AccountingApp
         private void ShowAll_Click(object sender, RoutedEventArgs e)
         {
             SearchProjectComboBox.SelectedItem = "جميع المشاريع";
+            _searchVoucherNoTextBox?.Clear();
             ResetDateFieldsToSelectedYear();
             RefreshSummaryGrid(false);
         }
@@ -111,7 +222,7 @@ namespace AccountingApp
             }
 
             if (!TryGetSearchDateRange(false, out DateTime? fromDate, out DateTime? toDate)) return;
-            AidsDataGrid.ItemsSource = LoadAidDetails(selectedProject.ProjectName, fromDate, toDate);
+            AidsDataGrid.ItemsSource = LoadAidDetails(selectedProject.ProjectName, GetVoucherSearchText(), fromDate, toDate);
             UpdateDetailsColumns(selectedProject.ProjectName);
         }
 
@@ -122,7 +233,7 @@ namespace AccountingApp
             if (string.IsNullOrWhiteSpace(projectName)) return;
 
             if (!TryGetSearchDateRange(false, out DateTime? fromDate, out DateTime? toDate)) return;
-            AidsDataGrid.ItemsSource = LoadAidDetails(projectName, fromDate, toDate);
+            AidsDataGrid.ItemsSource = LoadAidDetails(projectName, GetVoucherSearchText(), fromDate, toDate);
             UpdateDetailsColumns(projectName);
         }
 
@@ -136,6 +247,7 @@ namespace AccountingApp
                 string oldProject = _aidToEdit.ProjectName;
                 ExitEditMode();
                 ClearProjectFields(oldProject);
+                _voucherNoTextBox?.Clear();
             }
 
             var summaryItem = ProjectsSummaryDataGrid.Items
@@ -179,7 +291,7 @@ namespace AccountingApp
                 saved = SaveAidEntry(entry);
                 if (saved)
                 {
-                    MessageBox.Show("تمت إضافة الإدخال بنجاح.", "نجاح", MessageBoxButton.OK, MessageBoxImage.Information);
+                    MessageBox.Show($"تمت إضافة الإدخال بنجاح.\nرقم السند: {entry.VoucherNo}", "نجاح", MessageBoxButton.OK, MessageBoxImage.Information);
                 }
             }
             else
@@ -188,7 +300,7 @@ namespace AccountingApp
                 saved = UpdateAidEntry(entry);
                 if (saved)
                 {
-                    MessageBox.Show("تم تحديث الإدخال بنجاح.", "نجاح", MessageBoxButton.OK, MessageBoxImage.Information);
+                    MessageBox.Show($"تم تحديث الإدخال بنجاح.\nرقم السند: {entry.VoucherNo}", "نجاح", MessageBoxButton.OK, MessageBoxImage.Information);
                 }
             }
 
@@ -196,6 +308,7 @@ namespace AccountingApp
 
             ExitEditMode();
             ClearProjectFields(projectName);
+            _voucherNoTextBox?.Clear();
             RefreshSummaryGrid(false);
             LoadDetailsForCurrentProject();
         }
@@ -229,8 +342,12 @@ namespace AccountingApp
             var selectedAid = (sender as FrameworkElement)?.DataContext as AidEntry;
             if (selectedAid == null) return;
 
+            string voucherInfo = string.IsNullOrWhiteSpace(selectedAid.VoucherNo)
+                ? string.Empty
+                : $"\nرقم السند: {selectedAid.VoucherNo}";
+
             if (MessageBox.Show(
-                "هل أنت متأكد من رغبتك في حذف هذا السجل؟ سيؤثر الحذف على ملخص المشروع والتقارير.",
+                $"هل أنت متأكد من رغبتك في حذف هذا السجل؟{voucherInfo}\nسيؤثر الحذف على ملخص المشروع والتقارير.",
                 "تأكيد الحذف",
                 MessageBoxButton.YesNo,
                 MessageBoxImage.Warning) != MessageBoxResult.Yes)
@@ -256,7 +373,7 @@ namespace AccountingApp
             string filterProject = SearchProjectComboBox.SelectedItem as string;
             if (filterProject == "جميع المشاريع") filterProject = null;
 
-            var allEntries = LoadAllAidDetailsForPrinting(filterProject, fromDate, toDate);
+            var allEntries = LoadAllAidDetailsForPrinting(filterProject, GetVoucherSearchText(), fromDate, toDate);
             if (!allEntries.Any())
             {
                 MessageBox.Show("لا توجد بيانات للطباعة.");
@@ -267,7 +384,7 @@ namespace AccountingApp
             if (printDialog.ShowDialog() == true)
             {
                 FlowDocument doc = CreatePrintDocument(allEntries, filterProject, fromDate, toDate);
-                doc.PagePadding = new Thickness(50);
+                doc.PagePadding = new Thickness(40);
                 doc.ColumnWidth = printDialog.PrintableAreaWidth;
                 printDialog.PrintDocument(((IDocumentPaginatorSource)doc).DocumentPaginator, "تقرير المساعدات");
             }
@@ -282,7 +399,9 @@ namespace AccountingApp
                 using (var conn = new SqliteConnection(_connectionString))
                 {
                     conn.Open();
-                    const string sql = "INSERT INTO Aids (ProjectName, DonorName, Date, Amount, Quantity, DonationType, Year) VALUES (@ProjectName, @DonorName, @Date, @Amount, @Quantity, @DonationType, @Year)";
+                    const string sql = @"INSERT INTO Aids
+                        (ProjectName, VoucherNo, DonorName, Date, Amount, Quantity, DonationType, Year)
+                        VALUES (@ProjectName, @VoucherNo, @DonorName, @Date, @Amount, @Quantity, @DonationType, @Year)";
                     using (var cmd = new SqliteCommand(sql, conn))
                     {
                         AddAidParameters(cmd, entry, false);
@@ -305,7 +424,16 @@ namespace AccountingApp
                 using (var conn = new SqliteConnection(_connectionString))
                 {
                     conn.Open();
-                    const string sql = "UPDATE Aids SET ProjectName = @ProjectName, DonorName = @DonorName, Date = @Date, Amount = @Amount, Quantity = @Quantity, DonationType = @DonationType, Year = @Year WHERE Id = @Id";
+                    const string sql = @"UPDATE Aids SET
+                        ProjectName = @ProjectName,
+                        VoucherNo = @VoucherNo,
+                        DonorName = @DonorName,
+                        Date = @Date,
+                        Amount = @Amount,
+                        Quantity = @Quantity,
+                        DonationType = @DonationType,
+                        Year = @Year
+                        WHERE Id = @Id";
                     using (var cmd = new SqliteCommand(sql, conn))
                     {
                         AddAidParameters(cmd, entry, true);
@@ -324,6 +452,7 @@ namespace AccountingApp
         private static void AddAidParameters(SqliteCommand cmd, AidEntry entry, bool includeId)
         {
             cmd.Parameters.AddWithValue("@ProjectName", entry.ProjectName);
+            cmd.Parameters.AddWithValue("@VoucherNo", (object)entry.VoucherNo ?? DBNull.Value);
             cmd.Parameters.AddWithValue("@DonorName", (object)entry.DonorName ?? DBNull.Value);
             cmd.Parameters.AddWithValue("@Date", entry.Date.ToString("yyyy-MM-dd"));
             cmd.Parameters.AddWithValue("@Amount", entry.Amount);
@@ -355,7 +484,7 @@ namespace AccountingApp
             }
         }
 
-        private List<ProjectSummary> LoadProjectsSummary(string filterProject, DateTime? fromDate, DateTime? toDate)
+        private List<ProjectSummary> LoadProjectsSummary(string filterProject, string voucherFilter, DateTime? fromDate, DateTime? toDate)
         {
             var list = new List<ProjectSummary>();
             using (var conn = new SqliteConnection(_connectionString))
@@ -365,22 +494,7 @@ namespace AccountingApp
                 var sql = new StringBuilder("SELECT ProjectName, COALESCE(SUM(Amount),0), COALESCE(SUM(Quantity),0) FROM Aids WHERE Year = @Year");
                 var parameters = new Dictionary<string, object> { { "@Year", selectedYear } };
 
-                if (!string.IsNullOrEmpty(filterProject) && filterProject != "جميع المشاريع")
-                {
-                    sql.Append(" AND ProjectName = @ProjectName");
-                    parameters.Add("@ProjectName", filterProject);
-                }
-                if (fromDate.HasValue)
-                {
-                    sql.Append(" AND date(Date) >= date(@FromDate)");
-                    parameters.Add("@FromDate", fromDate.Value.ToString("yyyy-MM-dd"));
-                }
-                if (toDate.HasValue)
-                {
-                    sql.Append(" AND date(Date) <= date(@ToDate)");
-                    parameters.Add("@ToDate", toDate.Value.ToString("yyyy-MM-dd"));
-                }
-
+                AppendAidFilters(sql, parameters, filterProject, voucherFilter, fromDate, toDate);
                 sql.Append(" GROUP BY ProjectName ORDER BY ProjectName");
 
                 using (var cmd = new SqliteCommand(sql.ToString(), conn))
@@ -403,7 +517,7 @@ namespace AccountingApp
             return list;
         }
 
-        private List<AidEntry> LoadAidDetails(string projectName, DateTime? fromDate, DateTime? toDate)
+        private List<AidEntry> LoadAidDetails(string projectName, string voucherFilter, DateTime? fromDate, DateTime? toDate)
         {
             var list = new List<AidEntry>();
             if (string.IsNullOrWhiteSpace(projectName)) return list;
@@ -412,24 +526,15 @@ namespace AccountingApp
             {
                 conn.Open();
                 int selectedYear = FiscalYearHelper.GetSelectedYear(YearComboBox);
-                var sql = new StringBuilder("SELECT Id, DonorName, Date, Amount, Quantity, DonationType, ProjectName FROM Aids WHERE ProjectName = @ProjectName AND Year = @Year");
+                var sql = new StringBuilder(@"SELECT Id, VoucherNo, DonorName, Date, Amount, Quantity, DonationType, ProjectName
+                    FROM Aids WHERE ProjectName = @ProjectName AND Year = @Year");
                 var parameters = new Dictionary<string, object>
                 {
                     { "@ProjectName", projectName },
                     { "@Year", selectedYear }
                 };
 
-                if (fromDate.HasValue)
-                {
-                    sql.Append(" AND date(Date) >= date(@FromDate)");
-                    parameters.Add("@FromDate", fromDate.Value.ToString("yyyy-MM-dd"));
-                }
-                if (toDate.HasValue)
-                {
-                    sql.Append(" AND date(Date) <= date(@ToDate)");
-                    parameters.Add("@ToDate", toDate.Value.ToString("yyyy-MM-dd"));
-                }
-
+                AppendVoucherAndDateFilters(sql, parameters, voucherFilter, fromDate, toDate);
                 sql.Append(" ORDER BY date(Date) DESC, Id DESC");
 
                 using (var cmd = new SqliteCommand(sql.ToString(), conn))
@@ -442,12 +547,13 @@ namespace AccountingApp
                             list.Add(new AidEntry
                             {
                                 Id = reader.GetInt32(0),
-                                DonorName = reader.IsDBNull(1) ? string.Empty : reader.GetString(1),
-                                Date = ParseStoredDate(reader.GetString(2)),
-                                Amount = reader.IsDBNull(3) ? 0 : Convert.ToDecimal(reader.GetValue(3)),
-                                Quantity = reader.IsDBNull(4) ? 0 : Convert.ToInt32(reader.GetValue(4)),
-                                DonationType = reader.IsDBNull(5) ? string.Empty : reader.GetString(5),
-                                ProjectName = reader.GetString(6),
+                                VoucherNo = reader.IsDBNull(1) ? string.Empty : reader.GetString(1),
+                                DonorName = reader.IsDBNull(2) ? string.Empty : reader.GetString(2),
+                                Date = ParseStoredDate(reader.GetString(3)),
+                                Amount = reader.IsDBNull(4) ? 0 : Convert.ToDecimal(reader.GetValue(4)),
+                                Quantity = reader.IsDBNull(5) ? 0 : Convert.ToInt32(reader.GetValue(5)),
+                                DonationType = reader.IsDBNull(6) ? string.Empty : reader.GetString(6),
+                                ProjectName = reader.GetString(7),
                                 Year = selectedYear
                             });
                         }
@@ -457,32 +563,18 @@ namespace AccountingApp
             return list;
         }
 
-        private List<AidEntry> LoadAllAidDetailsForPrinting(string projectFilter, DateTime? fromDate, DateTime? toDate)
+        private List<AidEntry> LoadAllAidDetailsForPrinting(string projectFilter, string voucherFilter, DateTime? fromDate, DateTime? toDate)
         {
             var list = new List<AidEntry>();
             using (var conn = new SqliteConnection(_connectionString))
             {
                 conn.Open();
                 int selectedYear = FiscalYearHelper.GetSelectedYear(YearComboBox);
-                var sql = new StringBuilder("SELECT ProjectName, DonorName, Date, Amount, Quantity, DonationType FROM Aids WHERE Year = @Year");
+                var sql = new StringBuilder(@"SELECT ProjectName, VoucherNo, DonorName, Date, Amount, Quantity, DonationType
+                    FROM Aids WHERE Year = @Year");
                 var parameters = new Dictionary<string, object> { { "@Year", selectedYear } };
 
-                if (!string.IsNullOrEmpty(projectFilter))
-                {
-                    sql.Append(" AND ProjectName = @ProjectName");
-                    parameters.Add("@ProjectName", projectFilter);
-                }
-                if (fromDate.HasValue)
-                {
-                    sql.Append(" AND date(Date) >= date(@FromDate)");
-                    parameters.Add("@FromDate", fromDate.Value.ToString("yyyy-MM-dd"));
-                }
-                if (toDate.HasValue)
-                {
-                    sql.Append(" AND date(Date) <= date(@ToDate)");
-                    parameters.Add("@ToDate", toDate.Value.ToString("yyyy-MM-dd"));
-                }
-
+                AppendAidFilters(sql, parameters, projectFilter, voucherFilter, fromDate, toDate);
                 sql.Append(" ORDER BY ProjectName, date(Date), Id");
 
                 using (var cmd = new SqliteCommand(sql.ToString(), conn))
@@ -495,11 +587,12 @@ namespace AccountingApp
                             list.Add(new AidEntry
                             {
                                 ProjectName = reader.GetString(0),
-                                DonorName = reader.IsDBNull(1) ? string.Empty : reader.GetString(1),
-                                Date = ParseStoredDate(reader.GetString(2)),
-                                Amount = reader.IsDBNull(3) ? 0 : Convert.ToDecimal(reader.GetValue(3)),
-                                Quantity = reader.IsDBNull(4) ? 0 : Convert.ToInt32(reader.GetValue(4)),
-                                DonationType = reader.IsDBNull(5) ? string.Empty : reader.GetString(5),
+                                VoucherNo = reader.IsDBNull(1) ? string.Empty : reader.GetString(1),
+                                DonorName = reader.IsDBNull(2) ? string.Empty : reader.GetString(2),
+                                Date = ParseStoredDate(reader.GetString(3)),
+                                Amount = reader.IsDBNull(4) ? 0 : Convert.ToDecimal(reader.GetValue(4)),
+                                Quantity = reader.IsDBNull(5) ? 0 : Convert.ToInt32(reader.GetValue(5)),
+                                DonationType = reader.IsDBNull(6) ? string.Empty : reader.GetString(6),
                                 Year = selectedYear
                             });
                         }
@@ -507,6 +600,47 @@ namespace AccountingApp
                 }
             }
             return list;
+        }
+
+        private static void AppendAidFilters(
+            StringBuilder sql,
+            Dictionary<string, object> parameters,
+            string projectFilter,
+            string voucherFilter,
+            DateTime? fromDate,
+            DateTime? toDate)
+        {
+            if (!string.IsNullOrWhiteSpace(projectFilter) && projectFilter != "جميع المشاريع")
+            {
+                sql.Append(" AND ProjectName = @ProjectName");
+                parameters["@ProjectName"] = projectFilter;
+            }
+
+            AppendVoucherAndDateFilters(sql, parameters, voucherFilter, fromDate, toDate);
+        }
+
+        private static void AppendVoucherAndDateFilters(
+            StringBuilder sql,
+            Dictionary<string, object> parameters,
+            string voucherFilter,
+            DateTime? fromDate,
+            DateTime? toDate)
+        {
+            if (!string.IsNullOrWhiteSpace(voucherFilter))
+            {
+                sql.Append(" AND VoucherNo LIKE @VoucherNo");
+                parameters["@VoucherNo"] = "%" + voucherFilter + "%";
+            }
+            if (fromDate.HasValue)
+            {
+                sql.Append(" AND date(Date) >= date(@FromDate)");
+                parameters["@FromDate"] = fromDate.Value.ToString("yyyy-MM-dd");
+            }
+            if (toDate.HasValue)
+            {
+                sql.Append(" AND date(Date) <= date(@ToDate)");
+                parameters["@ToDate"] = toDate.Value.ToString("yyyy-MM-dd");
+            }
         }
 
         private static DateTime ParseStoredDate(string value)
@@ -520,6 +654,11 @@ namespace AccountingApp
         #endregion
 
         #region UI & Helpers
+        private string GetVoucherSearchText()
+        {
+            return _searchVoucherNoTextBox?.Text?.Trim();
+        }
+
         private bool TryParseDate(string dateText, out DateTime date, bool showMessage = true)
         {
             int? defaultYear = null;
@@ -588,6 +727,14 @@ namespace AccountingApp
 
         private bool PopulateAidEntry(AidEntry entry, string projectName)
         {
+            string voucherNo = _voucherNoTextBox?.Text?.Trim();
+            if (string.IsNullOrWhiteSpace(voucherNo))
+            {
+                MessageBox.Show("الرجاء إدخال رقم السند.", "رقم السند مطلوب", MessageBoxButton.OK, MessageBoxImage.Warning);
+                _voucherNoTextBox?.Focus();
+                return false;
+            }
+
             var fields = GetAidFields(projectName);
             if (fields == null || fields.Date == null || fields.Quantity == null || fields.Amount == null)
             {
@@ -620,6 +767,7 @@ namespace AccountingApp
                 typeText = $"أسر: {families}";
             }
 
+            entry.VoucherNo = voucherNo;
             entry.Date = parsedDate;
             entry.DonorName = fields.Donor?.Text?.Trim();
             entry.Quantity = quantity;
@@ -653,7 +801,7 @@ namespace AccountingApp
 
             if (!parsed || value < 0)
             {
-                MessageBox.Show($"{fieldName} يجب أن يكون رقماً صحيحاً صفراً أو أكبر.", "قيمة غير صحيحة", MessageBoxButton.OK, MessageBoxImage.Warning);
+                MessageBox.Show($"{fieldName} يجب أن يكون رقماً صفراً أو أكبر.", "قيمة غير صحيحة", MessageBoxButton.OK, MessageBoxImage.Warning);
                 return false;
             }
             return true;
@@ -661,6 +809,8 @@ namespace AccountingApp
 
         private void PopulateUIForEdit(AidEntry entry)
         {
+            if (_voucherNoTextBox != null) _voucherNoTextBox.Text = entry.VoucherNo ?? string.Empty;
+
             var fields = GetAidFields(entry.ProjectName);
             if (fields == null) return;
 
@@ -691,7 +841,7 @@ namespace AccountingApp
             string filterProject = SearchProjectComboBox.SelectedItem as string;
             string selectedProjectName = (ProjectsSummaryDataGrid.SelectedItem as ProjectSummary)?.ProjectName;
 
-            var projects = LoadProjectsSummary(filterProject, fromDate, toDate);
+            var projects = LoadProjectsSummary(filterProject, GetVoucherSearchText(), fromDate, toDate);
             ProjectsSummaryDataGrid.ItemsSource = null;
             ProjectsSummaryDataGrid.ItemsSource = projects;
 
@@ -783,6 +933,7 @@ namespace AccountingApp
             string editProject = _aidToEdit?.ProjectName;
             ExitEditMode();
             if (!string.IsNullOrWhiteSpace(editProject)) ClearProjectFields(editProject);
+            _voucherNoTextBox?.Clear();
         }
 
         private void SetButtonContent(string projectName, string content)
@@ -888,8 +1039,10 @@ namespace AccountingApp
                 TextAlignment = TextAlignment.Center
             });
 
+            string voucherFilter = GetVoucherSearchText();
+            string voucherPart = string.IsNullOrWhiteSpace(voucherFilter) ? string.Empty : $"    رقم السند: {voucherFilter}";
             doc.Blocks.Add(new Paragraph(new Run(
-                $"السنة المالية: {YearComboBox.SelectedItem}    من: {(fromDate.HasValue ? fromDate.Value.ToString(AppSettings.DateFormat) : "البداية")}  إلى: {(toDate.HasValue ? toDate.Value.ToString(AppSettings.DateFormat) : "النهاية")}"))
+                $"السنة المالية: {YearComboBox.SelectedItem}    من: {(fromDate.HasValue ? fromDate.Value.ToString(AppSettings.DateFormat) : "البداية")}  إلى: {(toDate.HasValue ? toDate.Value.ToString(AppSettings.DateFormat) : "النهاية")}{voucherPart}"))
             {
                 FontSize = 12,
                 TextAlignment = TextAlignment.Center,
@@ -904,17 +1057,19 @@ namespace AccountingApp
             };
             doc.Blocks.Add(table);
 
-            table.Columns.Add(new TableColumn { Width = new GridLength(1.5, GridUnitType.Star) });
-            table.Columns.Add(new TableColumn { Width = new GridLength(1.5, GridUnitType.Star) });
-            table.Columns.Add(new TableColumn { Width = new GridLength(1, GridUnitType.Star) });
+            table.Columns.Add(new TableColumn { Width = new GridLength(1.3, GridUnitType.Star) });
+            table.Columns.Add(new TableColumn { Width = new GridLength(0.8, GridUnitType.Star) });
+            table.Columns.Add(new TableColumn { Width = new GridLength(1.3, GridUnitType.Star) });
+            table.Columns.Add(new TableColumn { Width = new GridLength(0.9, GridUnitType.Star) });
             table.Columns.Add(new TableColumn { Width = new GridLength(1.2, GridUnitType.Star) });
-            table.Columns.Add(new TableColumn { Width = new GridLength(1, GridUnitType.Star) });
+            table.Columns.Add(new TableColumn { Width = new GridLength(0.8, GridUnitType.Star) });
 
             var headerGroup = new TableRowGroup();
             table.RowGroups.Add(headerGroup);
             var headerRow = new TableRow { Background = Brushes.LightGray, FontWeight = FontWeights.Bold };
             headerGroup.Rows.Add(headerRow);
             headerRow.Cells.Add(CreatePrintCell("المشروع", true));
+            headerRow.Cells.Add(CreatePrintCell("رقم السند", true));
             headerRow.Cells.Add(CreatePrintCell("المتبرع", true));
             headerRow.Cells.Add(CreatePrintCell("التاريخ", true));
             headerRow.Cells.Add(CreatePrintCell("الكمية/النوع", true));
@@ -927,6 +1082,7 @@ namespace AccountingApp
                 var row = new TableRow();
                 dataGroup.Rows.Add(row);
                 row.Cells.Add(CreatePrintCell(item.ProjectName));
+                row.Cells.Add(CreatePrintCell(item.VoucherNo));
                 row.Cells.Add(CreatePrintCell(item.DonorName));
                 row.Cells.Add(CreatePrintCell(item.Date.ToString(AppSettings.DateFormat)));
 
