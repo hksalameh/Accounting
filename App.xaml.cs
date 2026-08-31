@@ -22,6 +22,7 @@ namespace AccountingApp
         protected override void OnStartup(StartupEventArgs e)
         {
             DatabaseService.InitializeDatabase();
+            AuditService.Initialize();
 
             try
             {
