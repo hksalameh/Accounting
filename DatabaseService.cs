@@ -3,17 +3,19 @@ using System;
 using System.Collections.Generic;
 using System.Globalization;
 using System.IO;
+using System.Linq;
 using System.Windows;
 
 namespace AccountingApp
 {
     /// <summary>
-    /// فئة مركزية للتعامل مع قاعدة البيانات
-    /// توفر Connection String مشترك ودوال مساعدة
+    /// فئة مركزية للتعامل مع قاعدة البيانات.
+    /// تحافظ على التوافق مع ملفات invoices.db القديمة وتطبق ترقيات غير مدمرة فقط.
     /// </summary>
     public static class DatabaseService
     {
         private const string DatabaseFileName = "invoices.db";
+        private const int CurrentSchemaVersion = 1;
         private static bool _isInitialized;
 
         public static string DatabasePath
@@ -36,6 +38,19 @@ namespace AccountingApp
             }
         }
 
+        public static string BackupDirectory
+        {
+            get
+            {
+                var databaseDirectory = Path.GetDirectoryName(DatabasePath);
+                if (string.IsNullOrWhiteSpace(databaseDirectory))
+                {
+                    databaseDirectory = AppDomain.CurrentDomain.BaseDirectory;
+                }
+                return Path.Combine(databaseDirectory, "Backups");
+            }
+        }
+
         public static string ConnectionString
         {
             get
@@ -47,18 +62,61 @@ namespace AccountingApp
             }
         }
 
-        /// <summary>
-        /// إنشاء اتصال جديد بقاعدة البيانات
-        /// </summary>
         public static SqliteConnection GetConnection()
         {
             return new SqliteConnection(ConnectionString);
         }
 
         /// <summary>
-        /// تحليل التاريخ من نص مع معالجة الأخطاء ومرونة في الصيغ
-        /// يدعم الصيغ: d/M, d-M, d/M/yyyy, d-M-yyyy, yyyy/M/d, وغيرها
+        /// ينشئ نسخة احتياطية مستقلة من ملف قاعدة البيانات الحالي.
+        /// يعيد مسار النسخة أو null إذا لم توجد قاعدة بيانات بعد.
         /// </summary>
+        public static string CreateBackup(string reason = "manual")
+        {
+            if (!File.Exists(DatabasePath)) return null;
+
+            Directory.CreateDirectory(BackupDirectory);
+            string safeReason = SanitizeFilePart(reason);
+            string fileName = $"invoices-{DateTime.Now:yyyyMMdd-HHmmss}-{safeReason}.db";
+            string destination = Path.Combine(BackupDirectory, fileName);
+
+            File.Copy(DatabasePath, destination, false);
+            CleanupOldBackups(30);
+            return destination;
+        }
+
+        private static string SanitizeFilePart(string value)
+        {
+            if (string.IsNullOrWhiteSpace(value)) return "backup";
+            foreach (char invalid in Path.GetInvalidFileNameChars())
+            {
+                value = value.Replace(invalid, '-');
+            }
+            return value.Trim().Replace(' ', '-');
+        }
+
+        private static void CleanupOldBackups(int keepCount)
+        {
+            try
+            {
+                if (!Directory.Exists(BackupDirectory)) return;
+                var files = new DirectoryInfo(BackupDirectory)
+                    .GetFiles("invoices-*.db")
+                    .OrderByDescending(f => f.CreationTimeUtc)
+                    .Skip(keepCount)
+                    .ToList();
+
+                foreach (var file in files)
+                {
+                    try { file.Delete(); } catch { }
+                }
+            }
+            catch
+            {
+                // فشل تنظيف نسخة قديمة لا يجب أن يمنع البرنامج من العمل.
+            }
+        }
+
         public static bool TryParseDate(string dateText, out DateTime date, bool showMessage = true, int? defaultYear = null)
         {
             date = default(DateTime);
@@ -156,12 +214,13 @@ namespace AccountingApp
         }
 
         /// <summary>
-        /// تهيئة الجداول الأساسية مع Indexes للأداء.
-        /// لا يتم حذف أو إعادة إنشاء أي جدول موجود، حفاظاً على توافق قاعدة البيانات القديمة.
+        /// تهيئة الجداول الأساسية ثم تنفيذ أي ترقية مطلوبة بطريقة غير مدمرة.
         /// </summary>
         public static void InitializeDatabase()
         {
             if (_isInitialized) return;
+
+            bool databaseExistedBeforeStartup = File.Exists(DatabasePath);
 
             using (var conn = GetConnection())
             {
@@ -212,7 +271,8 @@ namespace AccountingApp
                     Amount REAL NOT NULL,
                     Quantity INTEGER NOT NULL,
                     DonationType TEXT,
-                    Year INTEGER NOT NULL
+                    Year INTEGER NOT NULL,
+                    VoucherNo TEXT
                 );
 
                 CREATE TABLE IF NOT EXISTS Cars (
@@ -234,7 +294,110 @@ namespace AccountingApp
                 {
                     cmd.ExecuteNonQuery();
                 }
+            }
 
+            ApplyMigrations(databaseExistedBeforeStartup);
+            CreateIndexes();
+            _isInitialized = true;
+        }
+
+        private static void ApplyMigrations(bool databaseExistedBeforeStartup)
+        {
+            int version;
+            bool hasVoucherNo;
+
+            using (var conn = GetConnection())
+            {
+                conn.Open();
+                version = GetUserVersion(conn);
+                hasVoucherNo = ColumnExists(conn, "Aids", "VoucherNo");
+            }
+
+            if (version >= CurrentSchemaVersion && hasVoucherNo) return;
+
+            // النسخة الاحتياطية مطلوبة فقط لملف قديم فعلي يحتاج تعديل في بنيته.
+            if (databaseExistedBeforeStartup && !hasVoucherNo)
+            {
+                try
+                {
+                    CreateBackup("pre-migration-v1");
+                }
+                catch (Exception ex)
+                {
+                    throw new InvalidOperationException(
+                        "تعذر إنشاء نسخة احتياطية قبل ترقية قاعدة البيانات. لم يتم إجراء أي تعديل على قاعدة البيانات.",
+                        ex);
+                }
+            }
+
+            using (var conn = GetConnection())
+            {
+                conn.Open();
+                using (var transaction = conn.BeginTransaction())
+                {
+                    try
+                    {
+                        if (!ColumnExists(conn, "Aids", "VoucherNo", transaction))
+                        {
+                            using (var cmd = conn.CreateCommand())
+                            {
+                                cmd.Transaction = transaction;
+                                cmd.CommandText = "ALTER TABLE Aids ADD COLUMN VoucherNo TEXT;";
+                                cmd.ExecuteNonQuery();
+                            }
+                        }
+
+                        using (var cmd = conn.CreateCommand())
+                        {
+                            cmd.Transaction = transaction;
+                            cmd.CommandText = $"PRAGMA user_version = {CurrentSchemaVersion};";
+                            cmd.ExecuteNonQuery();
+                        }
+
+                        transaction.Commit();
+                    }
+                    catch
+                    {
+                        transaction.Rollback();
+                        throw;
+                    }
+                }
+            }
+        }
+
+        private static int GetUserVersion(SqliteConnection conn)
+        {
+            using (var cmd = new SqliteCommand("PRAGMA user_version;", conn))
+            {
+                return Convert.ToInt32(cmd.ExecuteScalar());
+            }
+        }
+
+        private static bool ColumnExists(SqliteConnection conn, string tableName, string columnName, SqliteTransaction transaction = null)
+        {
+            using (var cmd = conn.CreateCommand())
+            {
+                cmd.Transaction = transaction;
+                cmd.CommandText = $"PRAGMA table_info({tableName});";
+                using (var reader = cmd.ExecuteReader())
+                {
+                    while (reader.Read())
+                    {
+                        if (string.Equals(reader.GetString(1), columnName, StringComparison.OrdinalIgnoreCase))
+                        {
+                            return true;
+                        }
+                    }
+                }
+            }
+            return false;
+        }
+
+        private static void CreateIndexes()
+        {
+            using (var conn = GetConnection())
+            {
+                conn.Open();
                 string indexesSql = @"
                 CREATE INDEX IF NOT EXISTS idx_invoices_year ON Invoices(Year);
                 CREATE INDEX IF NOT EXISTS idx_invoices_date ON Invoices(Date);
@@ -252,6 +415,7 @@ namespace AccountingApp
                 CREATE INDEX IF NOT EXISTS idx_aids_date ON Aids(Date);
                 CREATE INDEX IF NOT EXISTS idx_aids_project ON Aids(ProjectName);
                 CREATE INDEX IF NOT EXISTS idx_aids_year_project ON Aids(Year, ProjectName);
+                CREATE INDEX IF NOT EXISTS idx_aids_voucher ON Aids(VoucherNo);
 
                 CREATE INDEX IF NOT EXISTS idx_fuelinvoices_year ON FuelInvoices(Year);
                 CREATE INDEX IF NOT EXISTS idx_fuelinvoices_date ON FuelInvoices(Date);
@@ -264,8 +428,6 @@ namespace AccountingApp
                     cmd.ExecuteNonQuery();
                 }
             }
-
-            _isInitialized = true;
         }
     }
 }
