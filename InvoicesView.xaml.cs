@@ -64,8 +64,6 @@ namespace AccountingApp
                 InvoiceNo = InvoiceNoTextBox.Text?.Trim(),
                 Date = date,
                 Description = DescriptionTextBox.Text?.Trim(),
-                // نحافظ على أسماء أعمدة قاعدة البيانات القديمة للتوافق:
-                // Debit = تغذية الصندوق، Credit = صرف فاتورة.
                 Debit = fundAddition,
                 Credit = invoiceExpense,
                 Year = FiscalYearHelper.GetSelectedYear(YearComboBox)
@@ -95,21 +93,13 @@ namespace AccountingApp
 
             if (!hasFundAddition && !hasInvoiceExpense)
             {
-                MessageBox.Show(
-                    "أدخل مبلغاً في تغذية الصندوق أو في صرف الفاتورة.",
-                    "المبلغ مطلوب",
-                    MessageBoxButton.OK,
-                    MessageBoxImage.Warning);
+                MessageBox.Show("أدخل مبلغاً في تغذية الصندوق أو في صرف الفاتورة.", "المبلغ مطلوب", MessageBoxButton.OK, MessageBoxImage.Warning);
                 return false;
             }
 
             if (hasFundAddition && hasInvoiceExpense)
             {
-                MessageBox.Show(
-                    "الحركة الواحدة لا يمكن أن تكون تغذية للصندوق وصرف فاتورة في نفس الوقت.\n\nأدخل المبلغ في حقل واحد فقط.",
-                    "نوع الحركة غير واضح",
-                    MessageBoxButton.OK,
-                    MessageBoxImage.Warning);
+                MessageBox.Show("الحركة الواحدة لا يمكن أن تكون تغذية للصندوق وصرف فاتورة في نفس الوقت.\n\nأدخل المبلغ في حقل واحد فقط.", "نوع الحركة غير واضح", MessageBoxButton.OK, MessageBoxImage.Warning);
                 return false;
             }
 
@@ -138,7 +128,6 @@ namespace AccountingApp
                 DescriptionTextBox.Text = selected.Description;
                 DebitTextBox.Text = selected.Debit > 0 ? selected.Debit.ToString() : "";
                 CreditTextBox.Text = selected.Credit > 0 ? selected.Credit.ToString() : "";
-
                 AddUpdateButton.Content = "تحديث الحركة";
                 CancelEditButton.Visibility = Visibility.Visible;
             }
@@ -148,11 +137,7 @@ namespace AccountingApp
         {
             if (InvoicesDataGrid.SelectedItem is Invoice selected)
             {
-                if (MessageBox.Show(
-                    "هل أنت متأكد من حذف هذه الحركة؟",
-                    "تأكيد الحذف",
-                    MessageBoxButton.YesNo,
-                    MessageBoxImage.Warning) == MessageBoxResult.Yes)
+                if (MessageBox.Show("هل أنت متأكد من حذف هذه الحركة؟", "تأكيد الحذف", MessageBoxButton.YesNo, MessageBoxImage.Warning) == MessageBoxResult.Yes)
                 {
                     using (var conn = new SqliteConnection(_connectionString))
                     {
@@ -175,16 +160,13 @@ namespace AccountingApp
 
         private void UpdateOpeningBalance_Click(object sender, RoutedEventArgs e)
         {
-            if (YearComboBox.SelectedItem == null ||
-                !decimal.TryParse(OpeningBalanceTextBox.Text, out decimal balance) ||
-                balance < 0)
+            if (YearComboBox.SelectedItem == null || !decimal.TryParse(OpeningBalanceTextBox.Text, out decimal balance) || balance < 0)
             {
                 MessageBox.Show("الرجاء إدخال رصيد افتتاحي صحيح (صفر أو أكبر).");
                 return;
             }
 
             int year = int.Parse(YearComboBox.SelectedItem.ToString());
-
             using (var conn = new SqliteConnection(_connectionString))
             {
                 conn.Open();
@@ -195,7 +177,6 @@ namespace AccountingApp
                     cmd.ExecuteNonQuery();
                 }
             }
-
             RefreshInvoicesGrid();
         }
 
@@ -211,9 +192,7 @@ namespace AccountingApp
                 {
                     cmd.Parameters.AddWithValue("@Year", year);
                     var result = cmd.ExecuteScalar();
-                    OpeningBalanceTextBox.Text = result != null && result != DBNull.Value
-                        ? Convert.ToDecimal(result).ToString()
-                        : "0";
+                    OpeningBalanceTextBox.Text = result != null && result != DBNull.Value ? Convert.ToDecimal(result).ToString() : "0";
                 }
             }
         }
@@ -229,11 +208,8 @@ namespace AccountingApp
             DateTime? to = toDate == default(DateTime) ? (DateTime?)null : toDate;
 
             var invoices = LoadInvoices(SearchTextBox.Text, from, to);
-
             InvoicesDataGrid.ItemsSource = null;
             InvoicesDataGrid.ItemsSource = invoices;
-
-            // رصيد الصندوق لا يتأثر بفلتر البيان؛ هو الرصيد الحقيقي حتى تاريخ نهاية البحث.
             InvoicesBalanceText.Text = GetBalanceAsOf(to).ToString("N3");
         }
 
@@ -244,8 +220,7 @@ namespace AccountingApp
             decimal.TryParse(OpeningBalanceTextBox.Text, out decimal runningBalance);
             string filter = descriptionFilter?.Trim();
 
-            // نحمّل كل حركات السنة بالترتيب أولاً حتى نحسب الرصيد الحقيقي لكل سجل.
-            // بعد ذلك فقط نطبّق فلاتر العرض. بهذه الطريقة لا تختفي الحركات السابقة من حساب الرصيد.
+            // نحسب الرصيد زمنيًا من الأقدم للأحدث أولًا، ثم نعكس العرض فقط حتى تظهر أحدث حركة في الأعلى.
             using (var conn = new SqliteConnection(_connectionString))
             {
                 conn.Open();
@@ -263,8 +238,7 @@ namespace AccountingApp
                         {
                             string dateText = reader.GetString(2);
                             DateTime parsedDate;
-                            if (!DateTime.TryParseExact(dateText, "yyyy-MM-dd", CultureInfo.InvariantCulture, DateTimeStyles.None, out parsedDate) &&
-                                !DateTime.TryParse(dateText, out parsedDate))
+                            if (!DateTime.TryParseExact(dateText, "yyyy-MM-dd", CultureInfo.InvariantCulture, DateTimeStyles.None, out parsedDate) && !DateTime.TryParse(dateText, out parsedDate))
                             {
                                 continue;
                             }
@@ -283,8 +257,7 @@ namespace AccountingApp
                             runningBalance += invoice.Debit - invoice.Credit;
                             invoice.Balance = runningBalance;
 
-                            bool matchesDescription = string.IsNullOrWhiteSpace(filter) ||
-                                (invoice.Description ?? "").IndexOf(filter, StringComparison.CurrentCultureIgnoreCase) >= 0;
+                            bool matchesDescription = string.IsNullOrWhiteSpace(filter) || (invoice.Description ?? "").IndexOf(filter, StringComparison.CurrentCultureIgnoreCase) >= 0;
                             bool matchesFrom = !fromDate.HasValue || invoice.Date.Date >= fromDate.Value.Date;
                             bool matchesTo = !toDate.HasValue || invoice.Date.Date <= toDate.Value.Date;
 
@@ -297,7 +270,10 @@ namespace AccountingApp
                 }
             }
 
-            return visibleItems;
+            return visibleItems
+                .OrderByDescending(x => x.Date)
+                .ThenByDescending(x => x.Id)
+                .ToList();
         }
 
         private decimal GetBalanceAsOf(DateTime? toDate)
@@ -313,18 +289,12 @@ namespace AccountingApp
                 string sql = @"SELECT COALESCE(SUM(Debit), 0), COALESCE(SUM(Credit), 0)
                                FROM Invoices
                                WHERE Year = @Year";
-                if (toDate.HasValue)
-                {
-                    sql += " AND date(Date) <= date(@ToDate)";
-                }
+                if (toDate.HasValue) sql += " AND date(Date) <= date(@ToDate)";
 
                 using (var cmd = new SqliteCommand(sql, conn))
                 {
                     cmd.Parameters.AddWithValue("@Year", year);
-                    if (toDate.HasValue)
-                    {
-                        cmd.Parameters.AddWithValue("@ToDate", toDate.Value.ToString("yyyy-MM-dd"));
-                    }
+                    if (toDate.HasValue) cmd.Parameters.AddWithValue("@ToDate", toDate.Value.ToString("yyyy-MM-dd"));
 
                     using (var reader = cmd.ExecuteReader())
                     {
@@ -393,10 +363,7 @@ namespace AccountingApp
         private bool TryParseDate(string dateText, out DateTime date, bool showMessage = true)
         {
             int? defaultYear = null;
-            if (YearComboBox.SelectedItem != null && int.TryParse(YearComboBox.SelectedItem.ToString(), out int year))
-            {
-                defaultYear = year;
-            }
+            if (YearComboBox.SelectedItem != null && int.TryParse(YearComboBox.SelectedItem.ToString(), out int year)) defaultYear = year;
             return DatabaseService.TryParseDate(dateText, out date, showMessage, defaultYear);
         }
 
@@ -407,14 +374,8 @@ namespace AccountingApp
                 TextBox txt = sender as TextBox;
                 if (txt != null && !string.IsNullOrWhiteSpace(txt.Text))
                 {
-                    if (TryParseDate(txt.Text, out DateTime parsedDate, false))
-                    {
-                        txt.Text = parsedDate.ToString(AppSettings.DateFormat);
-                    }
-                    else
-                    {
-                        return;
-                    }
+                    if (TryParseDate(txt.Text, out DateTime parsedDate, false)) txt.Text = parsedDate.ToString(AppSettings.DateFormat);
+                    else return;
 
                     e.Handled = true;
                     TraversalRequest request = new TraversalRequest(FocusNavigationDirection.Next) { Wrapped = true };
@@ -479,10 +440,7 @@ namespace AccountingApp
                 TableRowGroup headerGroup = new TableRowGroup();
                 TableRow headerRow = new TableRow { Background = Brushes.LightGray };
                 string[] headers = { "التاريخ", "المرجع", "البيان", "تغذية الصندوق", "صرف فاتورة", "الرصيد" };
-                foreach (string headerText in headers)
-                {
-                    headerRow.Cells.Add(CreateCell(headerText, true));
-                }
+                foreach (string headerText in headers) headerRow.Cells.Add(CreateCell(headerText, true));
                 headerGroup.Rows.Add(headerRow);
                 table.RowGroups.Add(headerGroup);
 
@@ -494,11 +452,9 @@ namespace AccountingApp
                         TableRow row = new TableRow();
                         row.Cells.Add(CreateCell(inv.Date.ToString(AppSettings.DateFormat)));
                         row.Cells.Add(CreateCell(inv.InvoiceNo));
-
                         var descCell = CreateCell(inv.Description);
                         descCell.TextAlignment = TextAlignment.Right;
                         row.Cells.Add(descCell);
-
                         row.Cells.Add(CreateCell(inv.Debit > 0 ? inv.Debit.ToString("N3") : ""));
                         row.Cells.Add(CreateCell(inv.Credit > 0 ? inv.Credit.ToString("N3") : ""));
                         row.Cells.Add(CreateCell(inv.Balance.ToString("N3")));
@@ -520,10 +476,7 @@ namespace AccountingApp
                 TextBox txt = sender as TextBox;
                 if (txt != null && !string.IsNullOrWhiteSpace(txt.Text))
                 {
-                    if (TryParseDate(txt.Text, out DateTime parsedDate, false))
-                    {
-                        txt.Text = parsedDate.ToString(AppSettings.DateFormat);
-                    }
+                    if (TryParseDate(txt.Text, out DateTime parsedDate, false)) txt.Text = parsedDate.ToString(AppSettings.DateFormat);
                     else
                     {
                         MessageBox.Show("التاريخ غير صحيح.", "خطأ في التاريخ", MessageBoxButton.OK, MessageBoxImage.Warning);
@@ -536,18 +489,9 @@ namespace AccountingApp
 
         private TableCell CreateCell(string text, bool isHeader = false)
         {
-            Paragraph p = new Paragraph(new Run(text ?? ""))
-            {
-                Margin = new Thickness(4),
-                TextAlignment = TextAlignment.Center
-            };
+            Paragraph p = new Paragraph(new Run(text ?? "")) { Margin = new Thickness(4), TextAlignment = TextAlignment.Center };
             if (isHeader) p.FontWeight = FontWeights.Bold;
-
-            return new TableCell(p)
-            {
-                BorderThickness = new Thickness(1),
-                BorderBrush = Brushes.Black
-            };
+            return new TableCell(p) { BorderThickness = new Thickness(1), BorderBrush = Brushes.Black };
         }
 
         public void MoveFocusOnEnter(object sender, KeyEventArgs e)
@@ -555,10 +499,7 @@ namespace AccountingApp
             if (e.Key == Key.Enter)
             {
                 var request = new TraversalRequest(FocusNavigationDirection.Next);
-                if (Keyboard.FocusedElement is UIElement elementWithFocus)
-                {
-                    elementWithFocus.MoveFocus(request);
-                }
+                if (Keyboard.FocusedElement is UIElement elementWithFocus) elementWithFocus.MoveFocus(request);
                 e.Handled = true;
             }
         }
@@ -574,10 +515,7 @@ namespace AccountingApp
 
         private void OpeningBalanceTextBox_KeyDown(object sender, KeyEventArgs e)
         {
-            if (e.Key == Key.Enter)
-            {
-                UpdateOpeningBalance_Click(sender, e);
-            }
+            if (e.Key == Key.Enter) UpdateOpeningBalance_Click(sender, e);
         }
 
         private void ResetDateFieldsToSelectedYear()
