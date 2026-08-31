@@ -1,12 +1,8 @@
 using System;
-using System.Collections.Generic;
-using System.Configuration;
-using System.Data;
-using System.Linq;
-using System.Windows;
-using System.Globalization;  // <-- مطلوب لإعدادات الثقافة والتنسيق
+using System.Globalization;
 using System.IO;
-using System.Threading;      // <-- مطلوب للتحكم بالـ Thread Culture
+using System.Threading;
+using System.Windows;
 using System.Windows.Threading;
 
 namespace AccountingApp
@@ -26,6 +22,16 @@ namespace AccountingApp
         protected override void OnStartup(StartupEventArgs e)
         {
             DatabaseService.InitializeDatabase();
+
+            try
+            {
+                DatabaseService.CreateDailyBackup();
+            }
+            catch (Exception ex)
+            {
+                LogUnhandledException(new InvalidOperationException("تعذر إنشاء النسخة الاحتياطية اليومية.", ex));
+            }
+
             base.OnStartup(e);
         }
 
