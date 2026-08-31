@@ -8,541 +8,280 @@
     <UserControl.Resources>
         <local:ZeroToEmptyStringConverter x:Key="ZeroToEmptyConverter"/>
         <SolidColorBrush x:Key="PrimaryBrush" Color="#3182CE"/>
-        <SolidColorBrush x:Key="DangerBrush" Color="#E53E3E"/>
+        <SolidColorBrush x:Key="DangerBrush" Color="#C53030"/>
         <SolidColorBrush x:Key="WarningBrush" Color="#DD6B20"/>
-        <SolidColorBrush x:Key="SecondaryBrush" Color="#A0AEC0"/>
         <SolidColorBrush x:Key="SuccessBrush" Color="#2F855A"/>
         <SolidColorBrush x:Key="BorderBrush" Color="#CBD5E0"/>
 
-        <Style TargetType="TextBlock" x:Key="LabelStyle">
-            <Setter Property="VerticalAlignment" Value="Center"/>
-            <Setter Property="FontWeight" Value="SemiBold"/>
-            <Setter Property="Margin" Value="0,0,10,0"/>
-            <Setter Property="Foreground" Value="#4A5568"/>
+        <Style x:Key="SectionBorderStyle" TargetType="Border">
+            <Setter Property="Background" Value="White"/>
+            <Setter Property="CornerRadius" Value="10"/>
+            <Setter Property="BorderBrush" Value="{StaticResource BorderBrush}"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="Padding" Value="16"/>
+            <Setter Property="Margin" Value="0,0,0,14"/>
+            <Setter Property="Effect">
+                <Setter.Value>
+                    <DropShadowEffect ShadowDepth="1" Opacity="0.06" BlurRadius="10"/>
+                </Setter.Value>
+            </Setter>
         </Style>
-        <Style TargetType="Button" BasedOn="{StaticResource AppButtonStyle}">
+
+        <Style x:Key="LabelStyle" TargetType="TextBlock">
+            <Setter Property="FontWeight" Value="SemiBold"/>
+            <Setter Property="Foreground" Value="#4A5568"/>
+            <Setter Property="VerticalAlignment" Value="Center"/>
+            <Setter Property="Margin" Value="0,0,8,0"/>
+        </Style>
+
+        <Style x:Key="FieldTextBoxStyle" TargetType="TextBox">
+            <Setter Property="Height" Value="34"/>
+            <Setter Property="Padding" Value="7,4"/>
+            <Setter Property="VerticalContentAlignment" Value="Center"/>
+            <Setter Property="Margin" Value="0,4,12,4"/>
+        </Style>
+
+        <Style x:Key="FieldComboBoxStyle" TargetType="ComboBox">
+            <Setter Property="Height" Value="34"/>
+            <Setter Property="Padding" Value="5,2"/>
+            <Setter Property="Margin" Value="0,4,12,4"/>
+        </Style>
+
+        <Style x:Key="PrimaryButtonStyle" TargetType="Button" BasedOn="{StaticResource AppButtonStyle}">
             <Setter Property="Background" Value="{StaticResource PrimaryBrush}"/>
             <Setter Property="Foreground" Value="White"/>
             <Setter Property="FontWeight" Value="Bold"/>
+            <Setter Property="MinHeight" Value="34"/>
+            <Setter Property="Padding" Value="18,4"/>
             <Setter Property="Margin" Value="5"/>
-            <Setter Property="Padding" Value="20,0"/>
-            <Setter Property="MinHeight" Value="30"/>
-            <Setter Property="Cursor" Value="Hand"/>
-            <Setter Property="BorderThickness" Value="0"/>
         </Style>
-        <Style x:Key="DeleteButton" TargetType="Button" BasedOn="{StaticResource {x:Type Button}}">
-            <Setter Property="Background" Value="{StaticResource DangerBrush}"/>
+
+        <Style x:Key="SuccessButtonStyle" TargetType="Button" BasedOn="{StaticResource PrimaryButtonStyle}">
+            <Setter Property="Background" Value="{StaticResource SuccessBrush}"/>
         </Style>
-        <Style x:Key="EditButton" TargetType="Button" BasedOn="{StaticResource {x:Type Button}}">
+
+        <Style x:Key="WarningButtonStyle" TargetType="Button" BasedOn="{StaticResource PrimaryButtonStyle}">
             <Setter Property="Background" Value="{StaticResource WarningBrush}"/>
         </Style>
-        <Style TargetType="GroupBox">
-            <Setter Property="Background" Value="White"/>
-            <Setter Property="Padding" Value="5"/>
-            <Setter Property="Margin" Value="0,0,0,15"/>
-            <Setter Property="BorderBrush" Value="{StaticResource BorderBrush}"/>
-            <Setter Property="BorderThickness" Value="1"/>
-            <Setter Property="Template">
-                <Setter.Value>
-                    <ControlTemplate TargetType="GroupBox">
-                        <Border Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}" BorderThickness="{TemplateBinding BorderThickness}" CornerRadius="8">
-                            <Border.Effect>
-                                <DropShadowEffect ShadowDepth="1" Color="#000000" Opacity="0.05" BlurRadius="10"/>
-                            </Border.Effect>
-                            <Grid>
-                                <Grid.RowDefinitions>
-                                    <RowDefinition Height="Auto"/>
-                                    <RowDefinition Height="*"/>
-                                </Grid.RowDefinitions>
-                                <Border Grid.Row="0" Padding="10" BorderThickness="0,0,0,1" BorderBrush="{StaticResource BorderBrush}">
-                                    <TextBlock Text="{TemplateBinding Header}" FontSize="16" FontWeight="Bold" Foreground="{StaticResource PrimaryBrush}"/>
-                                </Border>
-                                <ContentPresenter Grid.Row="1" Margin="{TemplateBinding Padding}"/>
-                            </Grid>
-                        </Border>
-                    </ControlTemplate>
-                </Setter.Value>
-            </Setter>
+
+        <Style x:Key="DangerButtonStyle" TargetType="Button" BasedOn="{StaticResource PrimaryButtonStyle}">
+            <Setter Property="Background" Value="{StaticResource DangerBrush}"/>
         </Style>
     </UserControl.Resources>
 
     <ScrollViewer VerticalScrollBarVisibility="Auto">
-        <StackPanel Margin="20">
-            <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,0,0,20">
-                <TextBlock Text="المساعدات" FontSize="24" FontWeight="Bold" Foreground="#2D3748" VerticalAlignment="Center"/>
-                <TextBlock Text="السنة المالية:" Style="{StaticResource LabelStyle}" FontSize="16" Margin="50,0,10,0" VerticalAlignment="Center"/>
-                <ComboBox x:Name="YearComboBox" Width="100" Height="32" FontSize="16" VerticalAlignment="Center" SelectionChanged="YearComboBox_SelectionChanged"/>
-            </StackPanel>
+        <StackPanel Margin="18">
+            <!-- العنوان والسنة -->
+            <DockPanel Margin="0,0,0,14">
+                <TextBlock Text="المساعدات" FontSize="26" FontWeight="Bold" Foreground="#2D3748" DockPanel.Dock="Right"/>
+                <StackPanel Orientation="Horizontal" DockPanel.Dock="Left" HorizontalAlignment="Left">
+                    <TextBlock Text="السنة المالية:" Style="{StaticResource LabelStyle}" FontSize="15"/>
+                    <ComboBox x:Name="YearComboBox" Width="110" Style="{StaticResource FieldComboBoxStyle}" SelectionChanged="YearComboBox_SelectionChanged"/>
+                </StackPanel>
+            </DockPanel>
 
-            <GroupBox Header="بحث وتصفية">
-                <Grid>
-                    <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="Auto"/>
-                        <ColumnDefinition Width="*"/>
-                        <ColumnDefinition Width="Auto"/>
-                        <ColumnDefinition Width="Auto"/>
-                    </Grid.ColumnDefinitions>
+            <!-- بحث سريع -->
+            <Border Style="{StaticResource SectionBorderStyle}">
+                <StackPanel>
+                    <DockPanel Margin="0,0,0,10">
+                        <TextBlock Text="بحث سريع" FontSize="18" FontWeight="Bold" Foreground="{StaticResource PrimaryBrush}" DockPanel.Dock="Right"/>
+                        <TextBlock Text="ابحث برقم السند أو المتبرع أو البيان" Foreground="#718096" VerticalAlignment="Center" DockPanel.Dock="Left"/>
+                    </DockPanel>
 
-                    <TextBlock Grid.Column="0" Text="اسم المشروع:" Style="{StaticResource LabelStyle}"/>
-                    <ComboBox x:Name="SearchProjectComboBox" Grid.Column="1" Margin="0,0,20,0" Height="28"/>
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="2*"/>
+                            <ColumnDefinition Width="1.25*"/>
+                            <ColumnDefinition Width="Auto"/>
+                            <ColumnDefinition Width="Auto"/>
+                            <ColumnDefinition Width="Auto"/>
+                        </Grid.ColumnDefinitions>
 
-                    <StackPanel Grid.Column="2" Orientation="Horizontal">
-                        <TextBlock Text="من تاريخ:" Style="{StaticResource LabelStyle}"/>
-                        <TextBox x:Name="SearchFromDateTextBox" Width="110" Margin="0,0,10,0" TextAlignment="Center" KeyDown="DateInput_KeyDown"/>
-                        <TextBlock Text="إلى تاريخ:" Style="{StaticResource LabelStyle}"/>
-                        <TextBox x:Name="SearchToDateTextBox" Width="110" TextAlignment="Center" KeyDown="DateInput_KeyDown"/>
-                    </StackPanel>
+                        <StackPanel Grid.Column="0">
+                            <TextBlock Text="بحث:" Style="{StaticResource LabelStyle}"/>
+                            <TextBox x:Name="QuickSearchTextBox"
+                                     Style="{StaticResource FieldTextBoxStyle}"
+                                     ToolTip="رقم السند، اسم المتبرع، البيان أو اسم المشروع"
+                                     TextChanged="QuickSearchTextBox_TextChanged"/>
+                        </StackPanel>
 
-                    <StackPanel Grid.Column="3" Orientation="Horizontal" HorizontalAlignment="Left" Margin="20,0,0,0">
-                        <Button Content="بحث" Click="Search_Click"/>
-                        <Button Content="عرض الكل" Click="ShowAll_Click"/>
-                        <Button Content="طباعة" Margin="20,5,5,5" Background="{StaticResource SuccessBrush}" Click="Print_Click"/>
-                    </StackPanel>
-                </Grid>
-            </GroupBox>
+                        <StackPanel Grid.Column="1">
+                            <TextBlock Text="نوع المساعدة:" Style="{StaticResource LabelStyle}"/>
+                            <ComboBox x:Name="SearchProjectComboBox"
+                                      Style="{StaticResource FieldComboBoxStyle}"
+                                      SelectionChanged="SearchProjectComboBox_SelectionChanged"/>
+                        </StackPanel>
 
-            <GroupBox Header="ملخص المشاريع">
-                <DataGrid x:Name="ProjectsSummaryDataGrid" AutoGenerateColumns="False" IsReadOnly="True" MinHeight="100" MaxHeight="200" SelectionChanged="ProjectsSummaryDataGrid_SelectionChanged">
-                    <DataGrid.Columns>
-                        <DataGridTextColumn Header="اسم المشروع" Binding="{Binding ProjectName}" Width="2*"/>
-                        <DataGridTextColumn Header="الإجمالي (مبلغ)" Binding="{Binding TotalAmount, StringFormat=N3}" Width="*"/>
-                        <DataGridTextColumn Header="الإجمالي (كمية/عدد)" Binding="{Binding TotalQuantity}" Width="*"/>
-                    </DataGrid.Columns>
-                </DataGrid>
-            </GroupBox>
+                        <StackPanel Grid.Column="2">
+                            <TextBlock Text="من تاريخ:" Style="{StaticResource LabelStyle}"/>
+                            <TextBox x:Name="SearchFromDateTextBox" Width="120" Style="{StaticResource FieldTextBoxStyle}" TextAlignment="Center" KeyDown="SearchDate_KeyDown"/>
+                        </StackPanel>
 
-            <GroupBox Header="إضافة / تعديل إدخال">
-                <TabControl x:Name="AidEntryTabControl" SelectionChanged="AidEntryTabControl_SelectionChanged">
-                    <!-- 1. الطرود الغذائية -->
-                    <TabItem Header="الطرود الغذائية">
-                        <Grid Margin="10">
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="Auto"/>
-                                <ColumnDefinition Width="*"/>
-                                <ColumnDefinition Width="Auto"/>
-                                <ColumnDefinition Width="*"/>
-                            </Grid.ColumnDefinitions>
-                            <Grid.RowDefinitions>
-                                <RowDefinition Height="Auto"/>
-                                <RowDefinition Height="Auto"/>
-                                <RowDefinition Height="Auto"/>
-                                <RowDefinition Height="Auto"/>
-                            </Grid.RowDefinitions>
+                        <StackPanel Grid.Column="3">
+                            <TextBlock Text="إلى تاريخ:" Style="{StaticResource LabelStyle}"/>
+                            <TextBox x:Name="SearchToDateTextBox" Width="120" Style="{StaticResource FieldTextBoxStyle}" TextAlignment="Center" KeyDown="SearchDate_KeyDown"/>
+                        </StackPanel>
 
-                            <StackPanel Margin="10" HorizontalAlignment="Right">
-                                <!-- السطر الأول: تاريخ التبرع واسم المتبرع -->
-                                <StackPanel Orientation="Horizontal" Margin="0,5">
-                                    <TextBlock Text="تاريخ التبرع:" Style="{StaticResource LabelStyle}" Width="90"/>
-                                    <TextBox x:Name="FoodDateTextBox" Width="150" Margin="0,0,30,0" KeyDown="DateInput_KeyDown" TextAlignment="Center"/>
+                        <StackPanel Grid.Column="4" Orientation="Horizontal" VerticalAlignment="Bottom" Margin="10,0,0,4">
+                            <Button Content="بحث" Style="{StaticResource PrimaryButtonStyle}" Click="Search_Click"/>
+                            <Button Content="مسح البحث" Style="{StaticResource WarningButtonStyle}" Click="ClearSearch_Click"/>
+                            <Button Content="طباعة النتائج" Style="{StaticResource SuccessButtonStyle}" Click="Print_Click"/>
+                        </StackPanel>
+                    </Grid>
 
-                                    <TextBlock Text="اسم المتبرع:" Style="{StaticResource LabelStyle}" Width="90"/>
-                                    <TextBox x:Name="FoodDonorTextBox" Width="250" KeyDown="MoveFocusOnEnter"/>
-                                </StackPanel>
+                    <TextBlock x:Name="SearchSummaryTextBlock"
+                               Text="عدد النتائج: 0"
+                               Margin="0,8,0,0"
+                               Foreground="#4A5568"
+                               FontWeight="SemiBold"/>
+                </StackPanel>
+            </Border>
 
-                                <!-- السطر الثاني: نوع التبرع وعدد الطرود -->
-                                <StackPanel Orientation="Horizontal" Margin="0,5">
-                                    <TextBlock Text="نوع التبرع:" Style="{StaticResource LabelStyle}" Width="90"/>
-                                    <TextBox x:Name="FoodTypeTextBox" Width="150" Margin="0,0,30,0" KeyDown="MoveFocusOnEnter"/>
+            <!-- نموذج الإدخال الموحد -->
+            <Border Style="{StaticResource SectionBorderStyle}">
+                <StackPanel>
+                    <DockPanel Margin="0,0,0,10">
+                        <StackPanel DockPanel.Dock="Right">
+                            <TextBlock x:Name="EntryModeTextBlock" Text="إضافة مساعدة جديدة" FontSize="19" FontWeight="Bold" Foreground="{StaticResource PrimaryBrush}"/>
+                            <TextBlock x:Name="EntryProjectHintTextBlock" Foreground="#718096" Margin="0,3,0,0"/>
+                        </StackPanel>
+                        <TextBlock Text="استخدم Enter للتنقل بين الحقول، ومن المبلغ للحفظ مباشرة"
+                                   Foreground="#718096" VerticalAlignment="Center" DockPanel.Dock="Left"/>
+                    </DockPanel>
 
-                                    <TextBlock Text="عدد الطرود:" Style="{StaticResource LabelStyle}" Width="90"/>
-                                    <TextBox x:Name="FoodQuantityTextBox" Width="120" KeyDown="MoveFocusOnEnter"/>
-                                </StackPanel>
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="1.35*"/>
+                            <ColumnDefinition Width="1*"/>
+                            <ColumnDefinition Width="1*"/>
+                            <ColumnDefinition Width="1.4*"/>
+                        </Grid.ColumnDefinitions>
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="Auto"/>
+                        </Grid.RowDefinitions>
 
-                                <!-- السطر الثالث: المبلغ وزر الإدخال -->
-                                <StackPanel Orientation="Horizontal" Margin="0,5">
-                                    <TextBlock Text="المبلغ:" Style="{StaticResource LabelStyle}" Width="90"/>
-                                    <TextBox x:Name="FoodAmountTextBox" Width="150" Margin="0,0,30,0" KeyDown="LastField_KeyDown"/>
+                        <StackPanel Grid.Row="0" Grid.Column="0">
+                            <TextBlock Text="نوع المساعدة:" Style="{StaticResource LabelStyle}"/>
+                            <ComboBox x:Name="EntryProjectComboBox"
+                                      Style="{StaticResource FieldComboBoxStyle}"
+                                      SelectionChanged="EntryProjectComboBox_SelectionChanged"/>
+                        </StackPanel>
 
-                                    <Button x:Name="AddFoodButton" Content="إضافة إدخال" Click="AddUpdate_Click" Margin="90,0,0,0"/>
+                        <StackPanel Grid.Row="0" Grid.Column="1">
+                            <TextBlock Text="رقم السند:" Style="{StaticResource LabelStyle}"/>
+                            <TextBox x:Name="VoucherNoTextBox" Style="{StaticResource FieldTextBoxStyle}" KeyDown="MoveFocusOnEnter"/>
+                        </StackPanel>
 
-                                </StackPanel>
-                            </StackPanel>
-                        </Grid>
-                    </TabItem>
+                        <StackPanel Grid.Row="0" Grid.Column="2">
+                            <TextBlock Text="التاريخ:" Style="{StaticResource LabelStyle}"/>
+                            <TextBox x:Name="AidDateTextBox" Style="{StaticResource FieldTextBoxStyle}" TextAlignment="Center" KeyDown="EntryDate_KeyDown"/>
+                        </StackPanel>
 
-                    <!-- 2. الملابس والأحذية -->
-                    <TabItem Header="الملابس والأحذية">
-                        <Grid Margin="10">
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="Auto"/>
-                                <ColumnDefinition Width="*"/>
-                                <ColumnDefinition Width="Auto"/>
-                                <ColumnDefinition Width="*"/>
-                            </Grid.ColumnDefinitions>
-                            <Grid.RowDefinitions>
-                                <RowDefinition Height="Auto"/>
-                                <RowDefinition Height="Auto"/>
-                                <RowDefinition Height="Auto"/>
-                            </Grid.RowDefinitions>
+                        <StackPanel Grid.Row="0" Grid.Column="3">
+                            <TextBlock Text="اسم المتبرع:" Style="{StaticResource LabelStyle}"/>
+                            <TextBox x:Name="DonorNameTextBox" Style="{StaticResource FieldTextBoxStyle}" KeyDown="MoveFocusOnEnter"/>
+                        </StackPanel>
 
-                            <TextBlock Grid.Row="0" Grid.Column="0" Text="تاريخ التبرع:" Style="{StaticResource LabelStyle}"/>
-                            <TextBox Grid.Row="0" Grid.Column="1" x:Name="ClothesDateTextBox" Margin="0,5,20,5" KeyDown="DateInput_KeyDown" TextAlignment="Center"/>
+                        <StackPanel x:Name="DonationTypePanel" Grid.Row="1" Grid.Column="0">
+                            <TextBlock x:Name="DonationTypeLabelTextBlock" Text="البيان:" Style="{StaticResource LabelStyle}"/>
+                            <TextBox x:Name="DonationTypeTextBox" Style="{StaticResource FieldTextBoxStyle}" KeyDown="MoveFocusOnEnter"/>
+                        </StackPanel>
 
-                            <TextBlock Grid.Row="0" Grid.Column="2" Text="اسم المتبرع:" Style="{StaticResource LabelStyle}"/>
-                            <TextBox Grid.Row="0" Grid.Column="3" x:Name="ClothesDonor" Margin="0,5,0,5" KeyDown="MoveFocusOnEnter"/>
+                        <StackPanel Grid.Row="1" Grid.Column="1">
+                            <TextBlock x:Name="QuantityLabelTextBlock" Text="الكمية/العدد:" Style="{StaticResource LabelStyle}"/>
+                            <TextBox x:Name="QuantityTextBox" Style="{StaticResource FieldTextBoxStyle}" KeyDown="MoveFocusOnEnter"/>
+                        </StackPanel>
 
-                            <TextBlock Grid.Row="1" Grid.Column="0" Text="عدد الأسر:" Style="{StaticResource LabelStyle}"/>
-                            <TextBox Grid.Row="1" Grid.Column="1" x:Name="ClothesQuantity" Margin="0,5,20,5" KeyDown="MoveFocusOnEnter"/>
-                            <TextBlock Grid.Row="1" Grid.Column="2" Text="المبلغ:" Style="{StaticResource LabelStyle}"/>
-                            <TextBox Grid.Row="1" Grid.Column="3" x:Name="ClothesAmount" Margin="0,5,0,5" KeyDown="LastField_KeyDown"/>
-                            <Button x:Name="AddClothesButton" Grid.Row="2" Grid.ColumnSpan="4" Content="إضافة إدخال" HorizontalAlignment="Center" Margin="0,15,0,0" Click="AddAid_Click"/>
-                        </Grid>
-                    </TabItem>
+                        <StackPanel Grid.Row="1" Grid.Column="2">
+                            <TextBlock Text="المبلغ:" Style="{StaticResource LabelStyle}"/>
+                            <TextBox x:Name="AmountTextBox" Style="{StaticResource FieldTextBoxStyle}" KeyDown="AmountTextBox_KeyDown"/>
+                        </StackPanel>
 
-                    <!-- 3. معونة الشتاء -->
-                    <TabItem Header="معونة الشتاء">
-                        <Grid Margin="10">
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="Auto"/>
-                                <ColumnDefinition Width="*"/>
-                                <ColumnDefinition Width="Auto"/>
-                                <ColumnDefinition Width="*"/>
-                            </Grid.ColumnDefinitions>
-                            <Grid.RowDefinitions>
-                                <RowDefinition Height="Auto"/>
-                                <RowDefinition Height="Auto"/>
-                                <RowDefinition Height="Auto"/>
-                                <RowDefinition Height="Auto"/>
-                            </Grid.RowDefinitions>
+                        <StackPanel Grid.Row="1" Grid.Column="3" Orientation="Horizontal" VerticalAlignment="Bottom" Margin="5,0,0,4">
+                            <Button x:Name="SaveAidButton" Content="حفظ المساعدة" Style="{StaticResource SuccessButtonStyle}" Click="SaveAid_Click"/>
+                            <Button x:Name="CancelEditButton" Content="إلغاء التعديل" Style="{StaticResource WarningButtonStyle}" Click="CancelEdit_Click" Visibility="Collapsed"/>
+                        </StackPanel>
+                    </Grid>
 
-                            <TextBlock Grid.Row="0" Grid.Column="0" Text="تاريخ التبرع:" Style="{StaticResource LabelStyle}"/>
-                            <TextBox Grid.Row="0" Grid.Column="1" x:Name="WinterDateTextBox" Margin="0,5,20,5" KeyDown="DateInput_KeyDown" TextAlignment="Center"/>
+                    <Border Background="#F0FFF4" BorderBrush="#9AE6B4" BorderThickness="1" CornerRadius="6" Padding="10" Margin="0,10,0,0">
+                        <TextBlock x:Name="EntryStatusTextBlock" Text="جاهز لإضافة سجل جديد." Foreground="#276749" FontWeight="SemiBold"/>
+                    </Border>
+                </StackPanel>
+            </Border>
 
-                            <TextBlock Grid.Row="0" Grid.Column="2" Text="اسم المتبرع:" Style="{StaticResource LabelStyle}"/>
-                            <TextBox Grid.Row="0" Grid.Column="3" x:Name="WinterDonor" Margin="0,5,0,5" KeyDown="MoveFocusOnEnter"/>
+            <!-- آخر الإدخالات -->
+            <Border Style="{StaticResource SectionBorderStyle}">
+                <StackPanel>
+                    <DockPanel Margin="0,0,0,8">
+                        <TextBlock x:Name="RecentTitleTextBlock" Text="آخر الإدخالات" FontSize="18" FontWeight="Bold" Foreground="#2D3748" DockPanel.Dock="Right"/>
+                        <TextBlock Text="يمكن النقر مرتين على أي سجل لتعديله" Foreground="#718096" VerticalAlignment="Center" DockPanel.Dock="Left"/>
+                    </DockPanel>
 
-                            <TextBlock Grid.Row="1" Grid.Column="0" Text="نوع التبرع:" Style="{StaticResource LabelStyle}"/>
-                            <TextBox Grid.Row="1" Grid.Column="1" x:Name="WinterType" Margin="0,5,20,5" KeyDown="MoveFocusOnEnter"/>
-                            <TextBlock Grid.Row="1" Grid.Column="2" Text="عدد الأسر:" Style="{StaticResource LabelStyle}"/>
-                            <TextBox Grid.Row="1" Grid.Column="3" x:Name="WinterQuantity" Margin="0,5,0,5" KeyDown="MoveFocusOnEnter"/>
-                            <TextBlock Grid.Row="2" Grid.Column="0" Text="المبلغ:" Style="{StaticResource LabelStyle}"/>
-                            <TextBox Grid.Row="2" Grid.Column="1" x:Name="WinterAmount" Margin="0,5,20,5" KeyDown="LastField_KeyDown"/>
-                            <Button x:Name="AddWinterButton" Grid.Row="3" Grid.ColumnSpan="4" Content="إضافة إدخال" HorizontalAlignment="Center" Margin="0,15,0,0" Click="AddAid_Click"/>
-                        </Grid>
-                    </TabItem>
+                    <DataGrid x:Name="RecentEntriesDataGrid"
+                              AutoGenerateColumns="False"
+                              IsReadOnly="True"
+                              MinHeight="150"
+                              MaxHeight="250"
+                              MouseDoubleClick="AidDataGrid_MouseDoubleClick">
+                        <DataGrid.Columns>
+                            <DataGridTextColumn Header="رقم السند" Binding="{Binding VoucherNo}" Width="110"/>
+                            <DataGridTextColumn Header="التاريخ" Binding="{Binding Date, StringFormat={x:Static local:AppSettings.DateFormat}}" Width="100"/>
+                            <DataGridTextColumn Header="المتبرع" Binding="{Binding DonorName}" Width="*"/>
+                            <DataGridTextColumn x:Name="RecentQuantityColumn" Header="الكمية/العدد" Binding="{Binding Quantity, Converter={StaticResource ZeroToEmptyConverter}}" Width="110"/>
+                            <DataGridTextColumn x:Name="RecentDonationTypeColumn" Header="البيان" Binding="{Binding DonationType}" Width="*"/>
+                            <DataGridTextColumn Header="المبلغ" Binding="{Binding Amount, Converter={StaticResource ZeroToEmptyConverter}, StringFormat=N3}" Width="110"/>
+                            <DataGridTemplateColumn Header="إجراء" Width="145">
+                                <DataGridTemplateColumn.CellTemplate>
+                                    <DataTemplate>
+                                        <StackPanel Orientation="Horizontal">
+                                            <Button Content="تعديل" Style="{StaticResource WarningButtonStyle}" Padding="10,2" MinHeight="28" Click="EditAid_Click"/>
+                                            <Button Content="حذف" Style="{StaticResource DangerButtonStyle}" Padding="10,2" MinHeight="28" Click="DeleteAid_Click"/>
+                                        </StackPanel>
+                                    </DataTemplate>
+                                </DataGridTemplateColumn.CellTemplate>
+                            </DataGridTemplateColumn>
+                        </DataGrid.Columns>
+                    </DataGrid>
+                </StackPanel>
+            </Border>
 
-                    <!-- 4. الحقيبة المدرسية -->
-                    <TabItem Header="الحقيبة المدرسية">
-                        <Grid Margin="10">
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="Auto"/>
-                                <ColumnDefinition Width="*"/>
-                                <ColumnDefinition Width="Auto"/>
-                                <ColumnDefinition Width="*"/>
-                            </Grid.ColumnDefinitions>
-                            <Grid.RowDefinitions>
-                                <RowDefinition Height="Auto"/>
-                                <RowDefinition Height="Auto"/>
-                                <RowDefinition Height="Auto"/>
-                                <RowDefinition Height="Auto"/>
-                            </Grid.RowDefinitions>
+            <!-- نتائج البحث الكاملة -->
+            <Border Style="{StaticResource SectionBorderStyle}">
+                <StackPanel>
+                    <DockPanel Margin="0,0,0,8">
+                        <TextBlock Text="نتائج البحث الكاملة" FontSize="18" FontWeight="Bold" Foreground="#2D3748" DockPanel.Dock="Right"/>
+                        <TextBlock Text="البحث السريع يتحدث تلقائيًا أثناء الكتابة" Foreground="#718096" VerticalAlignment="Center" DockPanel.Dock="Left"/>
+                    </DockPanel>
 
-                            <TextBlock Grid.Row="0" Grid.Column="0" Text="تاريخ التبرع:" Style="{StaticResource LabelStyle}"/>
-                            <TextBox Grid.Row="0" Grid.Column="1" x:Name="BagDateTextBox" Margin="0,5,20,5" KeyDown="DateInput_KeyDown" TextAlignment="Center"/>
-
-                            <TextBlock Grid.Row="0" Grid.Column="2" Text="اسم المتبرع:" Style="{StaticResource LabelStyle}"/>
-                            <TextBox Grid.Row="0" Grid.Column="3" x:Name="BagDonor" Margin="0,5,0,5" KeyDown="MoveFocusOnEnter"/>
-
-                            <TextBlock Grid.Row="1" Grid.Column="0" Text="عدد الحقائب:" Style="{StaticResource LabelStyle}"/>
-                            <TextBox Grid.Row="1" Grid.Column="1" x:Name="BagQuantity" Margin="0,5,20,5" KeyDown="MoveFocusOnEnter"/>
-                            <TextBlock Grid.Row="1" Grid.Column="2" Text="عدد الأسر:" Style="{StaticResource LabelStyle}"/>
-                            <TextBox Grid.Row="1" Grid.Column="3" x:Name="BagFamilies" Margin="0,5,0,5" KeyDown="MoveFocusOnEnter"/>
-                            <TextBlock Grid.Row="2" Grid.Column="0" Text="المبلغ:" Style="{StaticResource LabelStyle}"/>
-                            <TextBox Grid.Row="2" Grid.Column="1" x:Name="BagAmount" Margin="0,5,20,5" KeyDown="LastField_KeyDown"/>
-                            <Button x:Name="AddBagButton" Grid.Row="3" Grid.ColumnSpan="4" Content="إضافة إدخال" HorizontalAlignment="Center" Margin="0,15,0,0" Click="AddAid_Click"/>
-                        </Grid>
-                    </TabItem>
-
-                    <!-- 5. كسوة العيد -->
-                    <TabItem Header="كسوة العيد">
-                        <Grid Margin="10">
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="Auto"/>
-                                <ColumnDefinition Width="*"/>
-                                <ColumnDefinition Width="Auto"/>
-                                <ColumnDefinition Width="*"/>
-                            </Grid.ColumnDefinitions>
-                            <Grid.RowDefinitions>
-                                <RowDefinition Height="Auto"/>
-                                <RowDefinition Height="Auto"/>
-                                <RowDefinition Height="Auto"/>
-                            </Grid.RowDefinitions>
-
-                            <TextBlock Grid.Row="0" Grid.Column="0" Text="تاريخ التبرع:" Style="{StaticResource LabelStyle}"/>
-                            <TextBox Grid.Row="0" Grid.Column="1" x:Name="EidDateTextBox" Margin="0,5,20,5" KeyDown="DateInput_KeyDown" TextAlignment="Center"/>
-
-                            <TextBlock Grid.Row="0" Grid.Column="2" Text="اسم المتبرع:" Style="{StaticResource LabelStyle}"/>
-                            <TextBox Grid.Row="0" Grid.Column="3" x:Name="EidDonor" Margin="0,5,0,5" KeyDown="MoveFocusOnEnter"/>
-
-                            <TextBlock Grid.Row="1" Grid.Column="0" Text="عدد الأسر:" Style="{StaticResource LabelStyle}"/>
-                            <TextBox Grid.Row="1" Grid.Column="1" x:Name="EidQuantity" Margin="0,5,20,5" KeyDown="MoveFocusOnEnter"/>
-                            <TextBlock Grid.Row="1" Grid.Column="2" Text="المبلغ:" Style="{StaticResource LabelStyle}"/>
-                            <TextBox Grid.Row="1" Grid.Column="3" x:Name="EidAmount" Margin="0,5,0,5" KeyDown="LastField_KeyDown"/>
-                            <Button x:Name="AddEidButton" Grid.Row="2" Grid.ColumnSpan="4" Content="إضافة إدخال" HorizontalAlignment="Center" Margin="0,15,0,0" Click="AddAid_Click"/>
-                        </Grid>
-                    </TabItem>
-
-                    <!-- 6. إفطار صائم -->
-                    <TabItem Header="إفطار صائم">
-                        <Grid Margin="10">
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="Auto"/>
-                                <ColumnDefinition Width="*"/>
-                                <ColumnDefinition Width="Auto"/>
-                                <ColumnDefinition Width="*"/>
-                            </Grid.ColumnDefinitions>
-                            <Grid.RowDefinitions>
-                                <RowDefinition Height="Auto"/>
-                                <RowDefinition Height="Auto"/>
-                                <RowDefinition Height="Auto"/>
-                                <RowDefinition Height="Auto"/>
-                            </Grid.RowDefinitions>
-
-                            <TextBlock Grid.Row="0" Grid.Column="0" Text="تاريخ التبرع:" Style="{StaticResource LabelStyle}"/>
-                            <TextBox Grid.Row="0" Grid.Column="1" x:Name="IftarDateTextBox" Margin="0,5,20,5" KeyDown="DateInput_KeyDown" TextAlignment="Center"/>
-
-                            <TextBlock Grid.Row="0" Grid.Column="2" Text="اسم المتبرع:" Style="{StaticResource LabelStyle}"/>
-                            <TextBox Grid.Row="0" Grid.Column="3" x:Name="IftarDonor" Margin="0,5,0,5" KeyDown="MoveFocusOnEnter"/>
-
-                            <TextBlock Grid.Row="1" Grid.Column="0" Text="عدد الوجبات:" Style="{StaticResource LabelStyle}"/>
-                            <TextBox Grid.Row="1" Grid.Column="1" x:Name="IftarQuantity" Margin="0,5,20,5" KeyDown="MoveFocusOnEnter"/>
-                            <TextBlock Grid.Row="1" Grid.Column="2" Text="عدد الأسر:" Style="{StaticResource LabelStyle}"/>
-                            <TextBox Grid.Row="1" Grid.Column="3" x:Name="IftarFamilies" Margin="0,5,0,5" KeyDown="MoveFocusOnEnter"/>
-                            <TextBlock Grid.Row="2" Grid.Column="0" Text="المبلغ:" Style="{StaticResource LabelStyle}"/>
-                            <TextBox Grid.Row="2" Grid.Column="1" x:Name="IftarAmount" Margin="0,5,20,5" KeyDown="LastField_KeyDown"/>
-                            <Button x:Name="AddIftarButton" Grid.Row="3" Grid.ColumnSpan="4" Content="إضافة إدخال" HorizontalAlignment="Center" Margin="0,15,0,0" Click="AddAid_Click"/>
-                        </Grid>
-                    </TabItem>
-
-                    <!-- 7. الأضاحي -->
-                    <TabItem Header="الأضاحي">
-                        <Grid Margin="10">
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="Auto"/>
-                                <ColumnDefinition Width="*"/>
-                                <ColumnDefinition Width="Auto"/>
-                                <ColumnDefinition Width="*"/>
-                            </Grid.ColumnDefinitions>
-                            <Grid.RowDefinitions>
-                                <RowDefinition Height="Auto"/>
-                                <RowDefinition Height="Auto"/>
-                                <RowDefinition Height="Auto"/>
-                            </Grid.RowDefinitions>
-
-                            <TextBlock Grid.Row="0" Grid.Column="0" Text="تاريخ التبرع:" Style="{StaticResource LabelStyle}"/>
-                            <TextBox Grid.Row="0" Grid.Column="1" x:Name="UdhiyahDateTextBox" Margin="0,5,20,5" KeyDown="DateInput_KeyDown" TextAlignment="Center"/>
-
-                            <TextBlock Grid.Row="0" Grid.Column="2" Text="اسم المتبرع:" Style="{StaticResource LabelStyle}"/>
-                            <TextBox Grid.Row="0" Grid.Column="3" x:Name="UdhiyahDonor" Margin="0,5,0,5" KeyDown="MoveFocusOnEnter"/>
-
-                            <TextBlock Grid.Row="1" Grid.Column="0" Text="عدد الأسر:" Style="{StaticResource LabelStyle}"/>
-                            <TextBox Grid.Row="1" Grid.Column="1" x:Name="UdhiyahQuantity" Margin="0,5,20,5" KeyDown="MoveFocusOnEnter"/>
-                            <TextBlock Grid.Row="1" Grid.Column="2" Text="المبلغ:" Style="{StaticResource LabelStyle}"/>
-                            <TextBox Grid.Row="1" Grid.Column="3" x:Name="UdhiyahAmount" Margin="0,5,0,5" KeyDown="LastField_KeyDown"/>
-                            <Button x:Name="AddUdhiyahButton" Grid.Row="2" Grid.ColumnSpan="4" Content="إضافة إدخال" HorizontalAlignment="Center" Margin="0,15,0,0" Click="AddAid_Click"/>
-                        </Grid>
-                    </TabItem>
-
-                    <!-- 8. أثاث منازل للفقراء -->
-                    <TabItem Header="أثاث منازل للفقراء">
-                        <Grid Margin="10">
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="Auto"/>
-                                <ColumnDefinition Width="*"/>
-                                <ColumnDefinition Width="Auto"/>
-                                <ColumnDefinition Width="*"/>
-                            </Grid.ColumnDefinitions>
-                            <Grid.RowDefinitions>
-                                <RowDefinition Height="Auto"/>
-                                <RowDefinition Height="Auto"/>
-                                <RowDefinition Height="Auto"/>
-                                <RowDefinition Height="Auto"/>
-                            </Grid.RowDefinitions>
-                            <TextBlock Grid.Row="0" Grid.Column="0" Text="التاريخ:" Style="{StaticResource LabelStyle}"/>
-                            <TextBox Grid.Row="0" Grid.Column="1" x:Name="FurnitureDateTextBox" Margin="0,5,20,5" KeyDown="DateInput_KeyDown" TextAlignment="Center"/>
-                            <TextBlock Grid.Row="0" Grid.Column="2" Text="المتبرع:" Style="{StaticResource LabelStyle}"/>
-                            <TextBox Grid.Row="0" Grid.Column="3" x:Name="FurnitureDonor" Margin="0,5,0,5" KeyDown="MoveFocusOnEnter"/>
-                            <TextBlock Grid.Row="1" Grid.Column="0" Text="البيان:" Style="{StaticResource LabelStyle}"/>
-                            <TextBox Grid.Row="1" Grid.Column="1" x:Name="FurnitureType" Margin="0,5,20,5" KeyDown="MoveFocusOnEnter"/>
-                            <TextBlock Grid.Row="1" Grid.Column="2" Text="عدد القطع:" Style="{StaticResource LabelStyle}"/>
-                            <TextBox Grid.Row="1" Grid.Column="3" x:Name="FurnitureQuantity" Margin="0,5,0,5" KeyDown="MoveFocusOnEnter"/>
-                            <TextBlock Grid.Row="2" Grid.Column="0" Text="المبلغ:" Style="{StaticResource LabelStyle}"/>
-                            <TextBox Grid.Row="2" Grid.Column="1" x:Name="FurnitureAmount" Margin="0,5,20,5" KeyDown="LastField_KeyDown"/>
-                            <Button x:Name="AddFurnitureButton" Grid.Row="3" Grid.ColumnSpan="4" Content="إضافة إدخال" HorizontalAlignment="Center" Margin="0,15,0,0" Click="AddAid_Click"/>
-                        </Grid>
-                    </TabItem>
-
-                    <!-- 9. مواد مستهلكة للفقراء -->
-                    <TabItem Header="مواد مستهلكة للفقراء">
-                        <Grid Margin="10">
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="Auto"/>
-                                <ColumnDefinition Width="*"/>
-                                <ColumnDefinition Width="Auto"/>
-                                <ColumnDefinition Width="*"/>
-                            </Grid.ColumnDefinitions>
-                            <Grid.RowDefinitions>
-                                <RowDefinition Height="Auto"/>
-                                <RowDefinition Height="Auto"/>
-                                <RowDefinition Height="Auto"/>
-                                <RowDefinition Height="Auto"/>
-                            </Grid.RowDefinitions>
-                            <TextBlock Grid.Row="0" Grid.Column="0" Text="التاريخ:" Style="{StaticResource LabelStyle}"/>
-                            <TextBox Grid.Row="0" Grid.Column="1" x:Name="ConsumablesPoorDateTextBox" Margin="0,5,20,5" KeyDown="DateInput_KeyDown" TextAlignment="Center"/>
-                            <TextBlock Grid.Row="0" Grid.Column="2" Text="المتبرع:" Style="{StaticResource LabelStyle}"/>
-                            <TextBox Grid.Row="0" Grid.Column="3" x:Name="ConsumablesPoorDonor" Margin="0,5,0,5" KeyDown="MoveFocusOnEnter"/>
-                            <TextBlock Grid.Row="1" Grid.Column="0" Text="البيان:" Style="{StaticResource LabelStyle}"/>
-                            <TextBox Grid.Row="1" Grid.Column="1" x:Name="ConsumablesPoorType" Margin="0,5,20,5" KeyDown="MoveFocusOnEnter"/>
-                            <TextBlock Grid.Row="1" Grid.Column="2" Text="الكمية:" Style="{StaticResource LabelStyle}"/>
-                            <TextBox Grid.Row="1" Grid.Column="3" x:Name="ConsumablesPoorQuantity" Margin="0,5,0,5" KeyDown="MoveFocusOnEnter"/>
-                            <TextBlock Grid.Row="2" Grid.Column="0" Text="المبلغ:" Style="{StaticResource LabelStyle}"/>
-                            <TextBox Grid.Row="2" Grid.Column="1" x:Name="ConsumablesPoorAmount" Margin="0,5,20,5" KeyDown="LastField_KeyDown"/>
-                            <Button x:Name="AddConsumablesPoorButton" Grid.Row="3" Grid.ColumnSpan="4" Content="إضافة إدخال" HorizontalAlignment="Center" Margin="0,15,0,0" Click="AddAid_Click"/>
-                        </Grid>
-                    </TabItem>
-
-                    <!-- 10. نذور وكفارات -->
-                    <TabItem Header="نذور وكفارات">
-                        <Grid Margin="10">
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="Auto"/>
-                                <ColumnDefinition Width="*"/>
-                                <ColumnDefinition Width="Auto"/>
-                                <ColumnDefinition Width="*"/>
-                            </Grid.ColumnDefinitions>
-                            <Grid.RowDefinitions>
-                                <RowDefinition Height="Auto"/>
-                                <RowDefinition Height="Auto"/>
-                                <RowDefinition Height="Auto"/>
-                                <RowDefinition Height="Auto"/>
-                            </Grid.RowDefinitions>
-                            <TextBlock Grid.Row="0" Grid.Column="0" Text="التاريخ:" Style="{StaticResource LabelStyle}"/>
-                            <TextBox Grid.Row="0" Grid.Column="1" x:Name="VowsDateTextBox" Margin="0,5,20,5" KeyDown="DateInput_KeyDown" TextAlignment="Center"/>
-                            <TextBlock Grid.Row="0" Grid.Column="2" Text="المتبرع:" Style="{StaticResource LabelStyle}"/>
-                            <TextBox Grid.Row="0" Grid.Column="3" x:Name="VowsDonor" Margin="0,5,0,5" KeyDown="MoveFocusOnEnter"/>
-                            <TextBlock Grid.Row="1" Grid.Column="0" Text="البيان:" Style="{StaticResource LabelStyle}"/>
-                            <TextBox Grid.Row="1" Grid.Column="1" x:Name="VowsType" Margin="0,5,20,5" KeyDown="MoveFocusOnEnter"/>
-                            <TextBlock Grid.Row="1" Grid.Column="2" Text="العدد:" Style="{StaticResource LabelStyle}"/>
-                            <TextBox Grid.Row="1" Grid.Column="3" x:Name="VowsQuantity" Margin="0,5,0,5" KeyDown="MoveFocusOnEnter"/>
-                            <TextBlock Grid.Row="2" Grid.Column="0" Text="المبلغ:" Style="{StaticResource LabelStyle}"/>
-                            <TextBox Grid.Row="2" Grid.Column="1" x:Name="VowsAmount" Margin="0,5,20,5" KeyDown="LastField_KeyDown"/>
-                            <Button x:Name="AddVowsButton" Grid.Row="3" Grid.ColumnSpan="4" Content="إضافة إدخال" HorizontalAlignment="Center" Margin="0,15,0,0" Click="AddAid_Click"/>
-                        </Grid>
-                    </TabItem>
-
-                    <!-- 11. أصول ثابتة -->
-                    <TabItem Header="أصول ثابتة">
-                        <Grid Margin="10">
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="Auto"/>
-                                <ColumnDefinition Width="*"/>
-                                <ColumnDefinition Width="Auto"/>
-                                <ColumnDefinition Width="*"/>
-                            </Grid.ColumnDefinitions>
-                            <Grid.RowDefinitions>
-                                <RowDefinition Height="Auto"/>
-                                <RowDefinition Height="Auto"/>
-                                <RowDefinition Height="Auto"/>
-                                <RowDefinition Height="Auto"/>
-                            </Grid.RowDefinitions>
-                            <TextBlock Grid.Row="0" Grid.Column="0" Text="التاريخ:" Style="{StaticResource LabelStyle}"/>
-                            <TextBox Grid.Row="0" Grid.Column="1" x:Name="FixedAssetsDateTextBox" Margin="0,5,20,5" KeyDown="DateInput_KeyDown" TextAlignment="Center"/>
-                            <TextBlock Grid.Row="0" Grid.Column="2" Text="المتبرع:" Style="{StaticResource LabelStyle}"/>
-                            <TextBox Grid.Row="0" Grid.Column="3" x:Name="FixedAssetsDonor" Margin="0,5,0,5" KeyDown="MoveFocusOnEnter"/>
-                            <TextBlock Grid.Row="1" Grid.Column="0" Text="البيان:" Style="{StaticResource LabelStyle}"/>
-                            <TextBox Grid.Row="1" Grid.Column="1" x:Name="FixedAssetsType" Margin="0,5,20,5" KeyDown="MoveFocusOnEnter"/>
-                            <TextBlock Grid.Row="1" Grid.Column="2" Text="العدد:" Style="{StaticResource LabelStyle}"/>
-                            <TextBox Grid.Row="1" Grid.Column="3" x:Name="FixedAssetsQuantity" Margin="0,5,0,5" KeyDown="MoveFocusOnEnter"/>
-                            <TextBlock Grid.Row="2" Grid.Column="0" Text="المبلغ:" Style="{StaticResource LabelStyle}"/>
-                            <TextBox Grid.Row="2" Grid.Column="1" x:Name="FixedAssetsAmount" Margin="0,5,20,5" KeyDown="LastField_KeyDown"/>
-                            <Button x:Name="AddFixedAssetsButton" Grid.Row="3" Grid.ColumnSpan="4" Content="إضافة إدخال" HorizontalAlignment="Center" Margin="0,15,0,0" Click="AddAid_Click"/>
-                        </Grid>
-                    </TabItem>
-
-                    <!-- 12. مواد مستهلكة للمركز -->
-                    <TabItem Header="مواد مستهلكة للمركز">
-                        <Grid Margin="10">
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="Auto"/>
-                                <ColumnDefinition Width="*"/>
-                                <ColumnDefinition Width="Auto"/>
-                                <ColumnDefinition Width="*"/>
-                            </Grid.ColumnDefinitions>
-                            <Grid.RowDefinitions>
-                                <RowDefinition Height="Auto"/>
-                                <RowDefinition Height="Auto"/>
-                                <RowDefinition Height="Auto"/>
-                                <RowDefinition Height="Auto"/>
-                            </Grid.RowDefinitions>
-                            <TextBlock Grid.Row="0" Grid.Column="0" Text="التاريخ:" Style="{StaticResource LabelStyle}"/>
-                            <TextBox Grid.Row="0" Grid.Column="1" x:Name="ConsumablesCenterDateTextBox" Margin="0,5,20,5" KeyDown="DateInput_KeyDown" TextAlignment="Center"/>
-                            <TextBlock Grid.Row="0" Grid.Column="2" Text="المتبرع:" Style="{StaticResource LabelStyle}"/>
-                            <TextBox Grid.Row="0" Grid.Column="3" x:Name="ConsumablesCenterDonor" Margin="0,5,0,5" KeyDown="MoveFocusOnEnter"/>
-                            <TextBlock Grid.Row="1" Grid.Column="0" Text="البيان:" Style="{StaticResource LabelStyle}"/>
-                            <TextBox Grid.Row="1" Grid.Column="1" x:Name="ConsumablesCenterType" Margin="0,5,20,5" KeyDown="MoveFocusOnEnter"/>
-                            <TextBlock Grid.Row="1" Grid.Column="2" Text="الكمية:" Style="{StaticResource LabelStyle}"/>
-                            <TextBox Grid.Row="1" Grid.Column="3" x:Name="ConsumablesCenterQuantity" Margin="0,5,0,5" KeyDown="MoveFocusOnEnter"/>
-                            <TextBlock Grid.Row="2" Grid.Column="0" Text="المبلغ:" Style="{StaticResource LabelStyle}"/>
-                            <TextBox Grid.Row="2" Grid.Column="1" x:Name="ConsumablesCenterAmount" Margin="0,5,20,5" KeyDown="LastField_KeyDown"/>
-                            <Button x:Name="AddConsumablesCenterButton" Grid.Row="3" Grid.ColumnSpan="4" Content="إضافة إدخال" HorizontalAlignment="Center" Margin="0,15,0,0" Click="AddAid_Click"/>
-                        </Grid>
-                    </TabItem>
-
-                    <!-- 13. أدوية ومستلزمات طبية -->
-                    <TabItem Header="أدوية ومستلزمات طبية">
-                        <Grid Margin="10">
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="Auto"/>
-                                <ColumnDefinition Width="*"/>
-                                <ColumnDefinition Width="Auto"/>
-                                <ColumnDefinition Width="*"/>
-                            </Grid.ColumnDefinitions>
-                            <Grid.RowDefinitions>
-                                <RowDefinition Height="Auto"/>
-                                <RowDefinition Height="Auto"/>
-                                <RowDefinition Height="Auto"/>
-                                <RowDefinition Height="Auto"/>
-                            </Grid.RowDefinitions>
-                            <TextBlock Grid.Row="0" Grid.Column="0" Text="التاريخ:" Style="{StaticResource LabelStyle}"/>
-                            <TextBox Grid.Row="0" Grid.Column="1" x:Name="MedicalDateTextBox" Margin="0,5,20,5" KeyDown="DateInput_KeyDown" TextAlignment="Center"/>
-                            <TextBlock Grid.Row="0" Grid.Column="2" Text="المتبرع:" Style="{StaticResource LabelStyle}"/>
-                            <TextBox Grid.Row="0" Grid.Column="3" x:Name="MedicalDonor" Margin="0,5,0,5" KeyDown="MoveFocusOnEnter"/>
-                            <TextBlock Grid.Row="1" Grid.Column="0" Text="البيان:" Style="{StaticResource LabelStyle}"/>
-                            <TextBox Grid.Row="1" Grid.Column="1" x:Name="MedicalType" Margin="0,5,20,5" KeyDown="MoveFocusOnEnter"/>
-                            <TextBlock Grid.Row="1" Grid.Column="2" Text="الكمية:" Style="{StaticResource LabelStyle}"/>
-                            <TextBox Grid.Row="1" Grid.Column="3" x:Name="MedicalQuantity" Margin="0,5,0,5" KeyDown="MoveFocusOnEnter"/>
-                            <TextBlock Grid.Row="2" Grid.Column="0" Text="المبلغ:" Style="{StaticResource LabelStyle}"/>
-                            <TextBox Grid.Row="2" Grid.Column="1" x:Name="MedicalAmount" Margin="0,5,20,5" KeyDown="LastField_KeyDown"/>
-                            <Button x:Name="AddMedicalButton" Grid.Row="3" Grid.ColumnSpan="4" Content="إضافة إدخال" HorizontalAlignment="Center" Margin="0,15,0,0" Click="AddAid_Click"/>
-                        </Grid>
-                    </TabItem>
-                </TabControl>
-            </GroupBox>
-
-            <GroupBox Header="قائمة المساعدات" Margin="0,15,0,0">
-                <DataGrid x:Name="AidsDataGrid" AutoGenerateColumns="False" IsReadOnly="True" MinHeight="200" MaxHeight="400" SelectionChanged="AidsDataGrid_SelectionChanged">
-                    <DataGrid.Columns>
-                        <DataGridTextColumn Header="المشروع" Binding="{Binding ProjectName}" Width="*"/>
-
-                        <DataGridTextColumn Header="التاريخ" Binding="{Binding Date, StringFormat={x:Static local:AppSettings.DateFormat}}" Width="Auto"/>
-                        <DataGridTextColumn Header="المتبرع" Binding="{Binding DonorName}" Width="*"/>
-
-                        <DataGridTextColumn Header="المبلغ" Binding="{Binding Amount, Converter={StaticResource ZeroToEmptyConverter}, StringFormat=N3}" Width="Auto"/>
-                        <DataGridTextColumn x:Name="QuantityColumn" Header="الكمية" Binding="{Binding Quantity, Converter={StaticResource ZeroToEmptyConverter}}" Width="Auto"/>
-                        <DataGridTextColumn x:Name="DonationTypeColumn" Header="النوع" Binding="{Binding DonationType}" Width="*"/>
-                        <DataGridTemplateColumn>
-                            <DataGridTemplateColumn.CellTemplate>
-                                <DataTemplate>
-                                    <StackPanel Orientation="Horizontal">
-                                        <Button Content="تعديل" Style="{StaticResource EditButton}" Click="EditAid_Click"/>
-                                        <Button Content="حذف" Style="{StaticResource DeleteButton}" Click="DeleteAid_Click"/>
-                                    </StackPanel>
-                                </DataTemplate>
-                            </DataGridTemplateColumn.CellTemplate>
-                        </DataGridTemplateColumn>
-                    </DataGrid.Columns>
-                </DataGrid>
-            </GroupBox>
+                    <DataGrid x:Name="AidsDataGrid"
+                              AutoGenerateColumns="False"
+                              IsReadOnly="True"
+                              MinHeight="230"
+                              MaxHeight="480"
+                              MouseDoubleClick="AidDataGrid_MouseDoubleClick">
+                        <DataGrid.Columns>
+                            <DataGridTextColumn Header="المشروع" Binding="{Binding ProjectName}" Width="1.4*"/>
+                            <DataGridTextColumn Header="رقم السند" Binding="{Binding VoucherNo}" Width="105"/>
+                            <DataGridTextColumn Header="التاريخ" Binding="{Binding Date, StringFormat={x:Static local:AppSettings.DateFormat}}" Width="95"/>
+                            <DataGridTextColumn Header="المتبرع" Binding="{Binding DonorName}" Width="1.2*"/>
+                            <DataGridTextColumn x:Name="QuantityColumn" Header="الكمية/العدد" Binding="{Binding Quantity, Converter={StaticResource ZeroToEmptyConverter}}" Width="110"/>
+                            <DataGridTextColumn x:Name="DonationTypeColumn" Header="البيان/النوع" Binding="{Binding DonationType}" Width="1.2*"/>
+                            <DataGridTextColumn Header="المبلغ" Binding="{Binding Amount, Converter={StaticResource ZeroToEmptyConverter}, StringFormat=N3}" Width="105"/>
+                            <DataGridTemplateColumn Header="إجراء" Width="145">
+                                <DataGridTemplateColumn.CellTemplate>
+                                    <DataTemplate>
+                                        <StackPanel Orientation="Horizontal">
+                                            <Button Content="تعديل" Style="{StaticResource WarningButtonStyle}" Padding="10,2" MinHeight="28" Click="EditAid_Click"/>
+                                            <Button Content="حذف" Style="{StaticResource DangerButtonStyle}" Padding="10,2" MinHeight="28" Click="DeleteAid_Click"/>
+                                        </StackPanel>
+                                    </DataTemplate>
+                                </DataGridTemplateColumn.CellTemplate>
+                            </DataGridTemplateColumn>
+                        </DataGrid.Columns>
+                    </DataGrid>
+                </StackPanel>
+            </Border>
         </StackPanel>
     </ScrollViewer>
 </UserControl>
