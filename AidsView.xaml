@@ -71,7 +71,6 @@
 
     <ScrollViewer VerticalScrollBarVisibility="Auto">
         <StackPanel Margin="18">
-            <!-- العنوان والسنة -->
             <DockPanel Margin="0,0,0,14">
                 <TextBlock Text="المساعدات" FontSize="26" FontWeight="Bold" Foreground="#2D3748" DockPanel.Dock="Right"/>
                 <StackPanel Orientation="Horizontal" DockPanel.Dock="Left" HorizontalAlignment="Left">
@@ -80,7 +79,6 @@
                 </StackPanel>
             </DockPanel>
 
-            <!-- بحث سريع -->
             <Border Style="{StaticResource SectionBorderStyle}">
                 <StackPanel>
                     <DockPanel Margin="0,0,0,10">
@@ -137,7 +135,43 @@
                 </StackPanel>
             </Border>
 
-            <!-- نموذج الإدخال الموحد -->
+            <!-- نتائج البحث تظهر مباشرة أسفل الفلاتر -->
+            <Border Style="{StaticResource SectionBorderStyle}">
+                <StackPanel>
+                    <DockPanel Margin="0,0,0,8">
+                        <TextBlock Text="نتائج البحث" FontSize="18" FontWeight="Bold" Foreground="#2D3748" DockPanel.Dock="Right"/>
+                        <TextBlock Text="هذه هي نفس النتائج التي ستتم طباعتها" Foreground="#718096" VerticalAlignment="Center" DockPanel.Dock="Left"/>
+                    </DockPanel>
+
+                    <DataGrid x:Name="AidsDataGrid"
+                              AutoGenerateColumns="False"
+                              IsReadOnly="True"
+                              MinHeight="230"
+                              MaxHeight="480"
+                              MouseDoubleClick="AidDataGrid_MouseDoubleClick">
+                        <DataGrid.Columns>
+                            <DataGridTextColumn Header="المشروع" Binding="{Binding ProjectName}" Width="1.4*"/>
+                            <DataGridTextColumn Header="رقم السند" Binding="{Binding VoucherNo}" Width="105"/>
+                            <DataGridTextColumn Header="التاريخ" Binding="{Binding Date, StringFormat={x:Static local:AppSettings.DateFormat}}" Width="95"/>
+                            <DataGridTextColumn Header="المتبرع" Binding="{Binding DonorName}" Width="1.2*"/>
+                            <DataGridTextColumn x:Name="QuantityColumn" Header="الكمية/العدد" Binding="{Binding Quantity, Converter={StaticResource ZeroToEmptyConverter}}" Width="110"/>
+                            <DataGridTextColumn x:Name="DonationTypeColumn" Header="البيان/النوع" Binding="{Binding DonationType}" Width="1.2*"/>
+                            <DataGridTextColumn Header="المبلغ" Binding="{Binding Amount, Converter={StaticResource ZeroToEmptyConverter}, StringFormat=N3}" Width="105"/>
+                            <DataGridTemplateColumn Header="إجراء" Width="145">
+                                <DataGridTemplateColumn.CellTemplate>
+                                    <DataTemplate>
+                                        <StackPanel Orientation="Horizontal">
+                                            <Button Content="تعديل" Style="{StaticResource WarningButtonStyle}" Padding="10,2" MinHeight="28" Click="EditAid_Click"/>
+                                            <Button Content="حذف" Style="{StaticResource DangerButtonStyle}" Padding="10,2" MinHeight="28" Click="DeleteAid_Click"/>
+                                        </StackPanel>
+                                    </DataTemplate>
+                                </DataGridTemplateColumn.CellTemplate>
+                            </DataGridTemplateColumn>
+                        </DataGrid.Columns>
+                    </DataGrid>
+                </StackPanel>
+            </Border>
+
             <Border Style="{StaticResource SectionBorderStyle}">
                 <StackPanel>
                     <DockPanel Margin="0,0,0,10">
@@ -210,7 +244,6 @@
                 </StackPanel>
             </Border>
 
-            <!-- آخر الإدخالات -->
             <Border Style="{StaticResource SectionBorderStyle}">
                 <StackPanel>
                     <DockPanel Margin="0,0,0,8">
@@ -231,43 +264,6 @@
                             <DataGridTextColumn x:Name="RecentQuantityColumn" Header="الكمية/العدد" Binding="{Binding Quantity, Converter={StaticResource ZeroToEmptyConverter}}" Width="110"/>
                             <DataGridTextColumn x:Name="RecentDonationTypeColumn" Header="البيان" Binding="{Binding DonationType}" Width="*"/>
                             <DataGridTextColumn Header="المبلغ" Binding="{Binding Amount, Converter={StaticResource ZeroToEmptyConverter}, StringFormat=N3}" Width="110"/>
-                            <DataGridTemplateColumn Header="إجراء" Width="145">
-                                <DataGridTemplateColumn.CellTemplate>
-                                    <DataTemplate>
-                                        <StackPanel Orientation="Horizontal">
-                                            <Button Content="تعديل" Style="{StaticResource WarningButtonStyle}" Padding="10,2" MinHeight="28" Click="EditAid_Click"/>
-                                            <Button Content="حذف" Style="{StaticResource DangerButtonStyle}" Padding="10,2" MinHeight="28" Click="DeleteAid_Click"/>
-                                        </StackPanel>
-                                    </DataTemplate>
-                                </DataGridTemplateColumn.CellTemplate>
-                            </DataGridTemplateColumn>
-                        </DataGrid.Columns>
-                    </DataGrid>
-                </StackPanel>
-            </Border>
-
-            <!-- نتائج البحث الكاملة -->
-            <Border Style="{StaticResource SectionBorderStyle}">
-                <StackPanel>
-                    <DockPanel Margin="0,0,0,8">
-                        <TextBlock Text="نتائج البحث الكاملة" FontSize="18" FontWeight="Bold" Foreground="#2D3748" DockPanel.Dock="Right"/>
-                        <TextBlock Text="البحث السريع يتحدث تلقائيًا أثناء الكتابة" Foreground="#718096" VerticalAlignment="Center" DockPanel.Dock="Left"/>
-                    </DockPanel>
-
-                    <DataGrid x:Name="AidsDataGrid"
-                              AutoGenerateColumns="False"
-                              IsReadOnly="True"
-                              MinHeight="230"
-                              MaxHeight="480"
-                              MouseDoubleClick="AidDataGrid_MouseDoubleClick">
-                        <DataGrid.Columns>
-                            <DataGridTextColumn Header="المشروع" Binding="{Binding ProjectName}" Width="1.4*"/>
-                            <DataGridTextColumn Header="رقم السند" Binding="{Binding VoucherNo}" Width="105"/>
-                            <DataGridTextColumn Header="التاريخ" Binding="{Binding Date, StringFormat={x:Static local:AppSettings.DateFormat}}" Width="95"/>
-                            <DataGridTextColumn Header="المتبرع" Binding="{Binding DonorName}" Width="1.2*"/>
-                            <DataGridTextColumn x:Name="QuantityColumn" Header="الكمية/العدد" Binding="{Binding Quantity, Converter={StaticResource ZeroToEmptyConverter}}" Width="110"/>
-                            <DataGridTextColumn x:Name="DonationTypeColumn" Header="البيان/النوع" Binding="{Binding DonationType}" Width="1.2*"/>
-                            <DataGridTextColumn Header="المبلغ" Binding="{Binding Amount, Converter={StaticResource ZeroToEmptyConverter}, StringFormat=N3}" Width="105"/>
                             <DataGridTemplateColumn Header="إجراء" Width="145">
                                 <DataGridTemplateColumn.CellTemplate>
                                     <DataTemplate>
